@@ -147,6 +147,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setReturnsState(items);
     });
 
+    // Real-time listener for WriteOffs from Firestore
+    const unsubWriteOffs = onSnapshot(collection(db, "writeoffs"), (snapshot) => {
+      if (snapshot.metadata.hasPendingWrites) return;
+      const items = snapshot.docs.map(doc => doc.data() as WriteOff);
+      setWriteOffsState(items);
+    });
+
+    // Real-time listener for Settings from Firestore
+    const unsubSettings = onSnapshot(doc(db, "settings", "global"), (snapshot) => {
+      if (snapshot.exists()) {
+        setSettingsState(snapshot.data() as any);
+      }
+    });
+
     const fetchData = async () => {
       // Skip local API if we're likely on Vercel (no custom backend)
       const isVercel = window.location.hostname.includes("vercel.app");
@@ -194,7 +208,34 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         if (wo.length) setWriteOffsState(wo);
         if (set && !Array.isArray(set)) setSettingsState(set);
         
-        console.log("Initial API fetch completed.");
+        console.log("Initial API fetch completed. Syncing to Firestore...");
+        
+        // One-time seed to Firestore if we have local data and Firestore might be empty
+        // This only runs in AI Studio (isVercel is false)
+        const seedToFirestore = async () => {
+          try {
+            const sync = async (col: string, data: any[], idKey: string) => {
+              for (const item of data) {
+                await setDoc(doc(db, col, String(item[idKey])), item);
+              }
+            };
+            if (inv.length) await sync("inventory", inv, "sku");
+            if (cat.length) await sync("catalogue", cat, "sku");
+            if (ven.length) await sync("vendors", ven, "id");
+            if (po.length) await sync("pos", po, "id");
+            if (pln.length) await sync("plans", pln, "id");
+            if (grn.length) await sync("grns", grn, "id");
+            if (inw.length) await sync("inwards", inw, "id");
+            if (out.length) await sync("outwards", out, "id");
+            if (ret.length) await sync("returns", ret, "id");
+            if (wo.length) await sync("writeoffs", wo, "id");
+            if (set && !Array.isArray(set)) await setDoc(doc(db, "settings", "global"), set);
+            console.log("Firestore seeding completed.");
+          } catch (e) {
+            console.error("Firestore seeding failed:", e);
+          }
+        };
+        seedToFirestore();
       } catch (err) {
         console.error("Critical failure in fetchData:", err);
       }
@@ -210,6 +251,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       unsubInwards();
       unsubOutwards();
       unsubReturns();
+      unsubWriteOffs();
+      unsubSettings();
     };
   }, []);
 
@@ -385,11 +428,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const setInwards = createFirestoreSetter(setInwardsState, "inwards", "/api/inwards");
   const setOutwards = createFirestoreSetter(setOutwardsState, "outwards", "/api/outwards");
   const setReturns = createFirestoreSetter(setReturnsState, "returns", "/api/returns");
-  const setWriteOffs = wrapSetter(setWriteOffsState, "/api/writeoffs", "id");
+  const setWriteOffs = createFirestoreSetter(setWriteOffsState, "writeoffs", "/api/writeoffs");
 
   const setSettings = (value: React.SetStateAction<typeof settings>) => {
     setSettingsState((prev) => {
       const next = typeof value === "function" ? (value as any)(prev) : value;
+      
+      // Sync to Firestore
+      setDoc(doc(db, "settings", "global"), next).catch(e => console.error("Settings sync failed:", e));
+
       if (!window.location.hostname.includes("vercel.app")) {
         fetch("/api/settings", {
           method: "POST",
