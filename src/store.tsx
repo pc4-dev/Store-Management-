@@ -148,33 +148,55 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     const fetchData = async () => {
+      // Skip local API if we're likely on Vercel (no custom backend)
+      const isVercel = window.location.hostname.includes("vercel.app");
+      if (isVercel) {
+        console.log("Vercel detected. Skipping local API and relying on Firestore.");
+        return;
+      }
+
       try {
-        const [inv, cat, ven, po, pln, grn, inw, out, ret, wo, set] = await Promise.all([
-          fetch("/api/inventory").then((r) => r.json()),
-          fetch("/api/catalogue").then((r) => r.json()),
-          fetch("/api/vendors").then((r) => r.json()),
-          fetch("/api/pos").then((r) => r.json()),
-          fetch("/api/plans").then((r) => r.json()),
-          fetch("/api/grns").then((r) => r.json()),
-          fetch("/api/inwards").then((r) => r.json()),
-          fetch("/api/outwards").then((r) => r.json()),
-          fetch("/api/returns").then((r) => r.json()),
-          fetch("/api/writeoffs").then((r) => r.json()),
-          fetch("/api/settings").then((r) => r.json()),
-        ]);
-        setInventoryState(inv);
-        setCatalogueState(cat);
-        setVendorsState(ven);
-        setPosState(po);
-        setPlansState(pln);
-        setGrnsState(grn);
-        setInwardsState(inw);
-        setOutwardsState(out);
-        setReturnsState(ret);
-        setWriteOffsState(wo);
-        if (set) setSettingsState(set);
+        console.log("Fetching initial data from local API...");
+        const endpoints = [
+          "/api/inventory", "/api/catalogue", "/api/vendors", "/api/pos",
+          "/api/plans", "/api/grns", "/api/inwards", "/api/outwards",
+          "/api/returns", "/api/writeoffs", "/api/settings"
+        ];
+
+        const results = await Promise.all(
+          endpoints.map(url => 
+            fetch(url)
+              .then(async r => {
+                const contentType = r.headers.get("content-type");
+                if (r.ok && contentType && contentType.includes("application/json")) {
+                  return r.json();
+                }
+                return [];
+              })
+              .catch(err => {
+                console.warn(`Failed to fetch from ${url}:`, err);
+                return [];
+              })
+          )
+        );
+
+        const [inv, cat, ven, po, pln, grn, inw, out, ret, wo, set] = results;
+        
+        if (inv.length) setInventoryState(inv);
+        if (cat.length) setCatalogueState(cat);
+        if (ven.length) setVendorsState(ven);
+        if (po.length) setPosState(po);
+        if (pln.length) setPlansState(pln);
+        if (grn.length) setGrnsState(grn);
+        if (inw.length) setInwardsState(inw);
+        if (out.length) setOutwardsState(out);
+        if (ret.length) setReturnsState(ret);
+        if (wo.length) setWriteOffsState(wo);
+        if (set && !Array.isArray(set)) setSettingsState(set);
+        
+        console.log("Initial API fetch completed.");
       } catch (err) {
-        console.error("Failed to fetch data", err);
+        console.error("Critical failure in fetchData:", err);
       }
     };
     fetchData();
@@ -199,22 +221,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return (value: React.SetStateAction<T[]>) => {
       setter((prev) => {
         const next = typeof value === "function" ? (value as any)(prev) : value;
-        // Sync to server
-        // For simplicity, we'll sync the items that changed or just the whole array if it's easier.
-        // But the API expects individual items.
-        // Let's find the difference or just POST all of them (inefficient but works for this scale).
-        // Better: the components usually add one item at a time.
-        // Let's just sync the whole array for now by adding a bulk endpoint or just loop.
-        // Actually, I'll just update the API to handle bulk or just POST the last item if it's an addition.
         
-        // For now, let's just POST every item in the next array to ensure consistency.
-        next.forEach((item: T) => {
-          fetch(endpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(item),
+        // Only sync to local API if not on Vercel
+        if (!window.location.hostname.includes("vercel.app")) {
+          next.forEach((item: T) => {
+            fetch(endpoint, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(item),
+            }).catch(() => {});
           });
-        });
+        }
         return next;
       });
     };
@@ -235,11 +252,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         changedOrNew.forEach(async (item) => {
           try {
             await setDoc(doc(db, "inventory", item.sku), item);
-            fetch("/api/inventory", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(item),
-            });
+            if (!window.location.hostname.includes("vercel.app")) {
+              fetch("/api/inventory", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(item),
+              }).catch(() => {});
+            }
           } catch (err) {
             console.error("Error saving to Firestore:", err);
           }
@@ -264,11 +283,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         changedOrNew.forEach(async (item) => {
           try {
             await setDoc(doc(db, "catalogue", item.sku), item);
-            fetch("/api/catalogue", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(item),
-            });
+            if (!window.location.hostname.includes("vercel.app")) {
+              fetch("/api/catalogue", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(item),
+              }).catch(() => {});
+            }
           } catch (err) {
             console.error("Error saving catalogue to Firestore:", err);
           }
@@ -293,11 +314,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         changedOrNew.forEach(async (item) => {
           try {
             await setDoc(doc(db, "vendors", item.id), item);
-            fetch("/api/vendors", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(item),
-            });
+            if (!window.location.hostname.includes("vercel.app")) {
+              fetch("/api/vendors", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(item),
+              }).catch(() => {});
+            }
           } catch (err) {
             console.error("Error saving vendor to Firestore:", err);
           }
@@ -337,12 +360,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
               const id = String(item[idField]);
               await setDoc(doc(db, collectionName, id), item as any);
               
-              // Also sync to local API
-              fetch(endpoint, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(item),
-              }).catch(err => console.warn(`Local API sync failed for ${collectionName}:`, err));
+              // Also sync to local API if not on Vercel
+              if (!window.location.hostname.includes("vercel.app")) {
+                fetch(endpoint, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(item),
+                }).catch(() => {});
+              }
             } catch (err) {
               console.error(`Error saving ${collectionName} to Firestore:`, err);
             }
@@ -365,11 +390,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const setSettings = (value: React.SetStateAction<typeof settings>) => {
     setSettingsState((prev) => {
       const next = typeof value === "function" ? (value as any)(prev) : value;
-      fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(next),
-      });
+      if (!window.location.hostname.includes("vercel.app")) {
+        fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(next),
+        }).catch(() => {});
+      }
       return next;
     });
   };
