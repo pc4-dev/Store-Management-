@@ -190,7 +190,7 @@ export const OutwardPage = () => {
                     .filter(
                       (i) =>
                         i.name
-                          .toLowerCase()
+                          ?.toLowerCase()
                           .includes(searchItem.toLowerCase()) &&
                         i.liveStock > 0,
                     )

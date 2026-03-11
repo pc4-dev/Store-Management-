@@ -29,8 +29,8 @@ export const Catalogue = () => {
   const filtered = catalogue.filter((c) => {
     const inv = inventory.find((i) => i.sku === c.sku);
     return (
-      inv?.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.sku.toLowerCase().includes(search.toLowerCase())
+      inv?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      c.sku?.toLowerCase().includes(search.toLowerCase())
     );
   });
 

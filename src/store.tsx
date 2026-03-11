@@ -161,86 +161,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    const fetchData = async () => {
-      // Skip local API if we're likely on Vercel (no custom backend)
-      const isVercel = window.location.hostname.includes("vercel.app");
-      if (isVercel) {
-        console.log("Vercel detected. Skipping local API and relying on Firestore.");
-        return;
-      }
-
-      try {
-        console.log("Fetching initial data from local API...");
-        const endpoints = [
-          "/api/inventory", "/api/catalogue", "/api/vendors", "/api/pos",
-          "/api/plans", "/api/grns", "/api/inwards", "/api/outwards",
-          "/api/returns", "/api/writeoffs", "/api/settings"
-        ];
-
-        const results = await Promise.all(
-          endpoints.map(url => 
-            fetch(url)
-              .then(async r => {
-                const contentType = r.headers.get("content-type");
-                if (r.ok && contentType && contentType.includes("application/json")) {
-                  return r.json();
-                }
-                return [];
-              })
-              .catch(err => {
-                console.warn(`Failed to fetch from ${url}:`, err);
-                return [];
-              })
-          )
-        );
-
-        const [inv, cat, ven, po, pln, grn, inw, out, ret, wo, set] = results;
-        
-        if (inv.length) setInventoryState(inv);
-        if (cat.length) setCatalogueState(cat);
-        if (ven.length) setVendorsState(ven);
-        if (po.length) setPosState(po);
-        if (pln.length) setPlansState(pln);
-        if (grn.length) setGrnsState(grn);
-        if (inw.length) setInwardsState(inw);
-        if (out.length) setOutwardsState(out);
-        if (ret.length) setReturnsState(ret);
-        if (wo.length) setWriteOffsState(wo);
-        if (set && !Array.isArray(set)) setSettingsState(set);
-        
-        console.log("Initial API fetch completed. Syncing to Firestore...");
-        
-        // One-time seed to Firestore if we have local data and Firestore might be empty
-        // This only runs in AI Studio (isVercel is false)
-        const seedToFirestore = async () => {
-          try {
-            const sync = async (col: string, data: any[], idKey: string) => {
-              for (const item of data) {
-                await setDoc(doc(db, col, String(item[idKey])), item);
-              }
-            };
-            if (inv.length) await sync("inventory", inv, "sku");
-            if (cat.length) await sync("catalogue", cat, "sku");
-            if (ven.length) await sync("vendors", ven, "id");
-            if (po.length) await sync("pos", po, "id");
-            if (pln.length) await sync("plans", pln, "id");
-            if (grn.length) await sync("grns", grn, "id");
-            if (inw.length) await sync("inwards", inw, "id");
-            if (out.length) await sync("outwards", out, "id");
-            if (ret.length) await sync("returns", ret, "id");
-            if (wo.length) await sync("writeoffs", wo, "id");
-            if (set && !Array.isArray(set)) await setDoc(doc(db, "settings", "global"), set);
-            console.log("Firestore seeding completed.");
-          } catch (e) {
-            console.error("Firestore seeding failed:", e);
-          }
-        };
-        seedToFirestore();
-      } catch (err) {
-        console.error("Critical failure in fetchData:", err);
-      }
-    };
-    fetchData();
     return () => {
       unsubInventory();
       unsubCatalogue();
@@ -295,13 +215,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         changedOrNew.forEach(async (item) => {
           try {
             await setDoc(doc(db, "inventory", item.sku), item);
-            if (!window.location.hostname.includes("vercel.app")) {
-              fetch("/api/inventory", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(item),
-              }).catch(() => {});
-            }
           } catch (err) {
             console.error("Error saving to Firestore:", err);
           }
@@ -326,13 +239,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         changedOrNew.forEach(async (item) => {
           try {
             await setDoc(doc(db, "catalogue", item.sku), item);
-            if (!window.location.hostname.includes("vercel.app")) {
-              fetch("/api/catalogue", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(item),
-              }).catch(() => {});
-            }
           } catch (err) {
             console.error("Error saving catalogue to Firestore:", err);
           }
@@ -357,13 +263,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         changedOrNew.forEach(async (item) => {
           try {
             await setDoc(doc(db, "vendors", item.id), item);
-            if (!window.location.hostname.includes("vercel.app")) {
-              fetch("/api/vendors", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(item),
-              }).catch(() => {});
-            }
           } catch (err) {
             console.error("Error saving vendor to Firestore:", err);
           }
@@ -377,7 +276,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const createFirestoreSetter = <T,>(
     setter: React.Dispatch<React.SetStateAction<T[]>>,
     collectionName: string,
-    endpoint: string,
     idField: keyof T = "id" as keyof T
   ) => {
     return (value: React.SetStateAction<T[]>) => {
@@ -402,15 +300,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             try {
               const id = String(item[idField]);
               await setDoc(doc(db, collectionName, id), item as any);
-              
-              // Also sync to local API if not on Vercel
-              if (!window.location.hostname.includes("vercel.app")) {
-                fetch(endpoint, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(item),
-                }).catch(() => {});
-              }
             } catch (err) {
               console.error(`Error saving ${collectionName} to Firestore:`, err);
             }
@@ -422,13 +311,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
   };
 
-  const setPos = createFirestoreSetter(setPosState, "pos", "/api/pos");
-  const setPlans = createFirestoreSetter(setPlansState, "plans", "/api/plans");
-  const setGrns = createFirestoreSetter(setGrnsState, "grns", "/api/grns");
-  const setInwards = createFirestoreSetter(setInwardsState, "inwards", "/api/inwards");
-  const setOutwards = createFirestoreSetter(setOutwardsState, "outwards", "/api/outwards");
-  const setReturns = createFirestoreSetter(setReturnsState, "returns", "/api/returns");
-  const setWriteOffs = createFirestoreSetter(setWriteOffsState, "writeoffs", "/api/writeoffs");
+  const setPos = createFirestoreSetter(setPosState, "pos");
+  const setPlans = createFirestoreSetter(setPlansState, "plans");
+  const setGrns = createFirestoreSetter(setGrnsState, "grns");
+  const setInwards = createFirestoreSetter(setInwardsState, "inwards");
+  const setOutwards = createFirestoreSetter(setOutwardsState, "outwards");
+  const setReturns = createFirestoreSetter(setReturnsState, "returns");
+  const setWriteOffs = createFirestoreSetter(setWriteOffsState, "writeoffs");
 
   const setSettings = (value: React.SetStateAction<typeof settings>) => {
     setSettingsState((prev) => {
@@ -437,13 +326,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       // Sync to Firestore
       setDoc(doc(db, "settings", "global"), next).catch(e => console.error("Settings sync failed:", e));
 
-      if (!window.location.hostname.includes("vercel.app")) {
-        fetch("/api/settings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(next),
-        }).catch(() => {});
-      }
       return next;
     });
   };
