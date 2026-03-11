@@ -1,0 +1,415 @@
+import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { collection, getDocs, doc, setDoc, onSnapshot } from "firebase/firestore";
+import { db } from "./firebase";
+import {
+  InventoryItem,
+  Vendor,
+  PurchaseOrder,
+  CatalogueEntry,
+  MaterialPlan,
+  GRN,
+  Inward,
+  Outward,
+  ReturnItem,
+  WriteOff,
+  Role,
+} from "./types";
+
+interface AppState {
+  role: Role | null;
+  setRole: (role: Role | null) => void;
+  inventory: InventoryItem[];
+  setInventory: (value: React.SetStateAction<InventoryItem[]>) => void;
+  catalogue: CatalogueEntry[];
+  setCatalogue: (value: React.SetStateAction<CatalogueEntry[]>) => void;
+  vendors: Vendor[];
+  setVendors: (value: React.SetStateAction<Vendor[]>) => void;
+  pos: PurchaseOrder[];
+  setPos: (value: React.SetStateAction<PurchaseOrder[]>) => void;
+  plans: MaterialPlan[];
+  setPlans: (value: React.SetStateAction<MaterialPlan[]>) => void;
+  grns: GRN[];
+  setGrns: (value: React.SetStateAction<GRN[]>) => void;
+  inwards: Inward[];
+  setInwards: (value: React.SetStateAction<Inward[]>) => void;
+  outwards: Outward[];
+  setOutwards: (value: React.SetStateAction<Outward[]>) => void;
+  returns: ReturnItem[];
+  setReturns: (value: React.SetStateAction<ReturnItem[]>) => void;
+  writeOffs: WriteOff[];
+  setWriteOffs: (value: React.SetStateAction<WriteOff[]>) => void;
+  settings: {
+    poThreshold: number;
+    minQuotesLow: number;
+    minQuotesHigh: number;
+  };
+  setSettings: (
+    value: React.SetStateAction<{
+      poThreshold: number;
+      minQuotesLow: number;
+      minQuotesHigh: number;
+    }>
+  ) => void;
+}
+
+const AppContext = createContext<AppState | undefined>(undefined);
+
+export const AppProvider = ({ children }: { children: ReactNode }) => {
+  const [role, setRole] = useState<Role | null>(null);
+  const [inventory, setInventoryState] = useState<InventoryItem[]>([]);
+  const [catalogue, setCatalogueState] = useState<CatalogueEntry[]>([]);
+  const [vendors, setVendorsState] = useState<Vendor[]>([]);
+  const [pos, setPosState] = useState<PurchaseOrder[]>([]);
+  const [plans, setPlansState] = useState<MaterialPlan[]>([]);
+  const [grns, setGrnsState] = useState<GRN[]>([]);
+  const [inwards, setInwardsState] = useState<Inward[]>([]);
+  const [outwards, setOutwardsState] = useState<Outward[]>([]);
+  const [returns, setReturnsState] = useState<ReturnItem[]>([]);
+  const [writeOffs, setWriteOffsState] = useState<WriteOff[]>([]);
+  const [settings, setSettingsState] = useState({
+    poThreshold: 25000,
+    minQuotesLow: 2,
+    minQuotesHigh: 3,
+  });
+
+  useEffect(() => {
+    if (!db) {
+      console.warn("Firestore DB not initialized. Cloud sync disabled.");
+      return;
+    }
+
+    // Real-time listener for Inventory from Firestore
+    const unsubInventory = onSnapshot(collection(db, "inventory"), (snapshot) => {
+      if (snapshot.metadata.hasPendingWrites) return;
+      const items = snapshot.docs.map(doc => doc.data() as InventoryItem);
+      setInventoryState(items);
+    }, (error) => {
+      console.error("Firestore inventory listener failed:", error);
+    });
+
+    // Real-time listener for Catalogue from Firestore
+    const unsubCatalogue = onSnapshot(collection(db, "catalogue"), (snapshot) => {
+      if (snapshot.metadata.hasPendingWrites) return;
+      const items = snapshot.docs.map(doc => doc.data() as CatalogueEntry);
+      setCatalogueState(items);
+    }, (error) => {
+      console.warn("Firestore catalogue listener failed:", error);
+    });
+
+    // Real-time listener for Vendors from Firestore
+    const unsubVendors = onSnapshot(collection(db, "vendors"), (snapshot) => {
+      if (snapshot.metadata.hasPendingWrites) return;
+      const items = snapshot.docs.map(doc => doc.data() as Vendor);
+      setVendorsState(items);
+    }, (error) => {
+      console.warn("Firestore vendors listener failed:", error);
+    });
+
+    // Real-time listener for POs from Firestore
+    const unsubPos = onSnapshot(collection(db, "pos"), (snapshot) => {
+      if (snapshot.metadata.hasPendingWrites) return;
+      const items = snapshot.docs.map(doc => doc.data() as PurchaseOrder);
+      setPosState(items);
+    });
+
+    // Real-time listener for Plans from Firestore
+    const unsubPlans = onSnapshot(collection(db, "plans"), (snapshot) => {
+      if (snapshot.metadata.hasPendingWrites) return;
+      const items = snapshot.docs.map(doc => doc.data() as MaterialPlan);
+      setPlansState(items);
+    });
+
+    // Real-time listener for GRNs from Firestore
+    const unsubGrns = onSnapshot(collection(db, "grns"), (snapshot) => {
+      if (snapshot.metadata.hasPendingWrites) return;
+      const items = snapshot.docs.map(doc => doc.data() as GRN);
+      setGrnsState(items);
+    });
+
+    // Real-time listener for Inwards from Firestore
+    const unsubInwards = onSnapshot(collection(db, "inwards"), (snapshot) => {
+      if (snapshot.metadata.hasPendingWrites) return;
+      const items = snapshot.docs.map(doc => doc.data() as Inward);
+      setInwardsState(items);
+    });
+
+    // Real-time listener for Outwards from Firestore
+    const unsubOutwards = onSnapshot(collection(db, "outwards"), (snapshot) => {
+      if (snapshot.metadata.hasPendingWrites) return;
+      const items = snapshot.docs.map(doc => doc.data() as Outward);
+      setOutwardsState(items);
+    });
+
+    // Real-time listener for Returns from Firestore
+    const unsubReturns = onSnapshot(collection(db, "returns"), (snapshot) => {
+      if (snapshot.metadata.hasPendingWrites) return;
+      const items = snapshot.docs.map(doc => doc.data() as ReturnItem);
+      setReturnsState(items);
+    });
+
+    const fetchData = async () => {
+      try {
+        const [inv, cat, ven, po, pln, grn, inw, out, ret, wo, set] = await Promise.all([
+          fetch("/api/inventory").then((r) => r.json()),
+          fetch("/api/catalogue").then((r) => r.json()),
+          fetch("/api/vendors").then((r) => r.json()),
+          fetch("/api/pos").then((r) => r.json()),
+          fetch("/api/plans").then((r) => r.json()),
+          fetch("/api/grns").then((r) => r.json()),
+          fetch("/api/inwards").then((r) => r.json()),
+          fetch("/api/outwards").then((r) => r.json()),
+          fetch("/api/returns").then((r) => r.json()),
+          fetch("/api/writeoffs").then((r) => r.json()),
+          fetch("/api/settings").then((r) => r.json()),
+        ]);
+        setInventoryState(inv);
+        setCatalogueState(cat);
+        setVendorsState(ven);
+        setPosState(po);
+        setPlansState(pln);
+        setGrnsState(grn);
+        setInwardsState(inw);
+        setOutwardsState(out);
+        setReturnsState(ret);
+        setWriteOffsState(wo);
+        if (set) setSettingsState(set);
+      } catch (err) {
+        console.error("Failed to fetch data", err);
+      }
+    };
+    fetchData();
+    return () => {
+      unsubInventory();
+      unsubCatalogue();
+      unsubVendors();
+      unsubPos();
+      unsubPlans();
+      unsubGrns();
+      unsubInwards();
+      unsubOutwards();
+      unsubReturns();
+    };
+  }, []);
+
+  const wrapSetter = <T,>(
+    setter: React.Dispatch<React.SetStateAction<T[]>>,
+    endpoint: string,
+    idField: keyof T = "id" as keyof T
+  ) => {
+    return (value: React.SetStateAction<T[]>) => {
+      setter((prev) => {
+        const next = typeof value === "function" ? (value as any)(prev) : value;
+        // Sync to server
+        // For simplicity, we'll sync the items that changed or just the whole array if it's easier.
+        // But the API expects individual items.
+        // Let's find the difference or just POST all of them (inefficient but works for this scale).
+        // Better: the components usually add one item at a time.
+        // Let's just sync the whole array for now by adding a bulk endpoint or just loop.
+        // Actually, I'll just update the API to handle bulk or just POST the last item if it's an addition.
+        
+        // For now, let's just POST every item in the next array to ensure consistency.
+        next.forEach((item: T) => {
+          fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(item),
+          });
+        });
+        return next;
+      });
+    };
+  };
+
+  const setInventory = (value: React.SetStateAction<InventoryItem[]>) => {
+    setInventoryState((prev) => {
+      const next = typeof value === "function" ? (value as any)(prev) : value;
+      
+      // Side effect: Sync only new or changed items to Firestore
+      Promise.resolve().then(() => {
+        const prevMap = new Map(prev.map(i => [i.sku, i]));
+        const changedOrNew = next.filter(item => {
+          const prevItem = prevMap.get(item.sku);
+          return !prevItem || JSON.stringify(prevItem) !== JSON.stringify(item);
+        });
+
+        changedOrNew.forEach(async (item) => {
+          try {
+            await setDoc(doc(db, "inventory", item.sku), item);
+            fetch("/api/inventory", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(item),
+            });
+          } catch (err) {
+            console.error("Error saving to Firestore:", err);
+          }
+        });
+      });
+
+      return next;
+    });
+  };
+
+  const setCatalogue = (value: React.SetStateAction<CatalogueEntry[]>) => {
+    setCatalogueState((prev) => {
+      const next = typeof value === "function" ? (value as any)(prev) : value;
+      
+      Promise.resolve().then(() => {
+        const prevMap = new Map(prev.map(i => [i.sku, i]));
+        const changedOrNew = next.filter(item => {
+          const prevItem = prevMap.get(item.sku);
+          return !prevItem || JSON.stringify(prevItem) !== JSON.stringify(item);
+        });
+
+        changedOrNew.forEach(async (item) => {
+          try {
+            await setDoc(doc(db, "catalogue", item.sku), item);
+            fetch("/api/catalogue", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(item),
+            });
+          } catch (err) {
+            console.error("Error saving catalogue to Firestore:", err);
+          }
+        });
+      });
+
+      return next;
+    });
+  };
+
+  const setVendors = (value: React.SetStateAction<Vendor[]>) => {
+    setVendorsState((prev) => {
+      const next = typeof value === "function" ? (value as any)(prev) : value;
+      
+      Promise.resolve().then(() => {
+        const prevMap = new Map(prev.map(i => [i.id, i]));
+        const changedOrNew = next.filter(item => {
+          const prevItem = prevMap.get(item.id);
+          return !prevItem || JSON.stringify(prevItem) !== JSON.stringify(item);
+        });
+
+        changedOrNew.forEach(async (item) => {
+          try {
+            await setDoc(doc(db, "vendors", item.id), item);
+            fetch("/api/vendors", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(item),
+            });
+          } catch (err) {
+            console.error("Error saving vendor to Firestore:", err);
+          }
+        });
+      });
+
+      return next;
+    });
+  };
+
+  const createFirestoreSetter = <T,>(
+    setter: React.Dispatch<React.SetStateAction<T[]>>,
+    collectionName: string,
+    endpoint: string,
+    idField: keyof T = "id" as keyof T
+  ) => {
+    return (value: React.SetStateAction<T[]>) => {
+      setter((prev) => {
+        const next = typeof value === "function" ? (value as any)(prev) : value;
+        
+        // Side effect: Sync only new or changed items
+        Promise.resolve().then(() => {
+          const prevMap = new Map(prev.map(i => [String(i[idField]), i]));
+          const changedOrNew = next.filter(item => {
+            const id = String(item[idField]);
+            const prevItem = prevMap.get(id);
+            // Deep comparison via stringify to detect changes in items array etc.
+            return !prevItem || JSON.stringify(prevItem) !== JSON.stringify(item);
+          });
+
+          if (changedOrNew.length > 0) {
+            console.log(`Syncing ${changedOrNew.length} items to ${collectionName}...`);
+          }
+
+          changedOrNew.forEach(async (item: T) => {
+            try {
+              const id = String(item[idField]);
+              await setDoc(doc(db, collectionName, id), item as any);
+              
+              // Also sync to local API
+              fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(item),
+              }).catch(err => console.warn(`Local API sync failed for ${collectionName}:`, err));
+            } catch (err) {
+              console.error(`Error saving ${collectionName} to Firestore:`, err);
+            }
+          });
+        });
+
+        return next;
+      });
+    };
+  };
+
+  const setPos = createFirestoreSetter(setPosState, "pos", "/api/pos");
+  const setPlans = createFirestoreSetter(setPlansState, "plans", "/api/plans");
+  const setGrns = createFirestoreSetter(setGrnsState, "grns", "/api/grns");
+  const setInwards = createFirestoreSetter(setInwardsState, "inwards", "/api/inwards");
+  const setOutwards = createFirestoreSetter(setOutwardsState, "outwards", "/api/outwards");
+  const setReturns = createFirestoreSetter(setReturnsState, "returns", "/api/returns");
+  const setWriteOffs = wrapSetter(setWriteOffsState, "/api/writeoffs", "id");
+
+  const setSettings = (value: React.SetStateAction<typeof settings>) => {
+    setSettingsState((prev) => {
+      const next = typeof value === "function" ? (value as any)(prev) : value;
+      fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(next),
+      });
+      return next;
+    });
+  };
+
+  return (
+    <AppContext.Provider
+      value={{
+        role,
+        setRole,
+        inventory,
+        setInventory,
+        catalogue,
+        setCatalogue,
+        vendors,
+        setVendors,
+        pos,
+        setPos,
+        plans,
+        setPlans,
+        grns,
+        setGrns,
+        inwards,
+        setInwards,
+        outwards,
+        setOutwards,
+        returns,
+        setReturns,
+        writeOffs,
+        setWriteOffs,
+        settings,
+        setSettings,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useAppStore = () => {
+  const context = useContext(AppContext);
+  if (!context) throw new Error("useAppStore must be used within AppProvider");
+  return context;
+};
