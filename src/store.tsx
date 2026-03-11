@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { collection, getDocs, doc, setDoc, onSnapshot } from "firebase/firestore";
-import { db } from "./firebase";
+import { collection, getDocs, doc, setDoc, onSnapshot, getDoc } from "firebase/firestore";
+import { db, auth } from "./firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import {
   InventoryItem,
   Vendor,
@@ -16,8 +17,12 @@ import {
 } from "./types";
 
 interface AppState {
+  user: { uid: string; email: string; name: string; role: Role } | null;
+  setUser: (user: { uid: string; email: string; name: string; role: Role } | null) => void;
   role: Role | null;
   setRole: (role: Role | null) => void;
+  logout: () => Promise<void>;
+  logActivity: (action: string, details?: any) => Promise<void>;
   inventory: InventoryItem[];
   setInventory: (value: React.SetStateAction<InventoryItem[]>) => void;
   catalogue: CatalogueEntry[];
@@ -55,6 +60,7 @@ interface AppState {
 const AppContext = createContext<AppState | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<{ uid: string; email: string; name: string; role: Role } | null>(null);
   const [role, setRole] = useState<Role | null>(null);
   const [inventory, setInventoryState] = useState<InventoryItem[]>([]);
   const [catalogue, setCatalogueState] = useState<CatalogueEntry[]>([]);
@@ -73,6 +79,25 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   });
 
   useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setRole(userData.role);
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || "",
+            name: userData.name || "User",
+            role: userData.role
+          });
+        }
+      } else {
+        setUser(null);
+        setRole(null);
+      }
+    });
+
     if (!db) {
       console.warn("Firestore DB not initialized. Cloud sync disabled.");
       return;
@@ -173,6 +198,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       unsubReturns();
       unsubWriteOffs();
       unsubSettings();
+      unsubAuth();
     };
   }, []);
 
@@ -330,11 +356,42 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const logout = async () => {
+    try {
+      if (user) await logActivity("Logout", { email: user.email });
+      await auth.signOut();
+      setUser(null);
+      setRole(null);
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
+
+  const logActivity = async (action: string, details: any = {}) => {
+    if (!user) return;
+    try {
+      await setDoc(doc(collection(db, "activity_logs")), {
+        userId: user.uid,
+        userName: user.name,
+        userRole: user.role,
+        action,
+        details,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("Failed to log activity:", err);
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
+        user,
+        setUser,
         role,
         setRole,
+        logout,
+        logActivity,
         inventory,
         setInventory,
         catalogue,

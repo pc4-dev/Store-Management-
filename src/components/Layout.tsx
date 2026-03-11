@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { role, setRole } = useAppStore();
+  const { role, logout, user } = useAppStore();
   const [collapsed, setCollapsed] = useState(false);
 
   const navItems = [
@@ -237,7 +237,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
         <div className="p-4 border-t border-white/10 shrink-0">
           <button
-            onClick={() => setRole(null)}
+            onClick={logout}
             className="flex items-center w-full text-gray-400 hover:text-white transition-colors"
           >
             <LogOut className="w-5 h-5 shrink-0" />
@@ -265,12 +265,13 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
-              <div className="text-[13px] font-bold text-[#1A1A2E]">{role}</div>
+              <div className="text-[13px] font-bold text-[#1A1A2E]">{user?.name || role}</div>
+              <div className="text-[11px] text-[#6B7280]">{role}</div>
             </div>
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${role === "Super Admin" ? "bg-gradient-to-br from-[#6D28D9] to-[#4C1D95]" : "bg-[#F97316]"}`}
             >
-              {role?.charAt(0)}
+              {(user?.name || role)?.charAt(0)}
             </div>
           </div>
         </header>

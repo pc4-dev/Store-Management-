@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { AppProvider, useAppStore } from "./store";
 import { Layout } from "./components/Layout";
-import { Login } from "./pages/Login";
+import { LoginPage } from "./components/Auth/LoginPage";
 import { Dashboard } from "./pages/Dashboard";
 import { Inventory } from "./pages/Inventory";
 import { PurchaseOrders } from "./pages/PurchaseOrders";
@@ -33,7 +33,7 @@ const AppContent = () => {
   }, []);
 
   if (!role) {
-    return <Login />;
+    return <LoginPage />;
   }
 
   const renderPage = () => {

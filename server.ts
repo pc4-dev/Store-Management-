@@ -3,9 +3,22 @@ import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
+import admin from "firebase-admin";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Initialize Firebase Admin
+if (process.env.VITE_FIREBASE_PROJECT_ID) {
+  try {
+    admin.initializeApp({
+      projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+    });
+    console.log("Firebase Admin initialized");
+  } catch (err) {
+    console.error("Firebase Admin init failed:", err);
+  }
+}
 
 const db = new Database("store.db");
 
@@ -319,6 +332,30 @@ async function startServer() {
       UPDATE settings SET poThreshold = ?, minQuotesLow = ?, minQuotesHigh = ? WHERE id = 1
     `).run(poThreshold, minQuotesLow, minQuotesHigh);
     res.json({ success: true });
+  });
+
+  app.post("/api/admin/create-user", async (req, res) => {
+    const { email, password, name, role } = req.body;
+    try {
+      const userRecord = await admin.auth().createUser({
+        email,
+        password,
+        displayName: name,
+      });
+
+      // Store role in Firestore via Admin SDK
+      await admin.firestore().collection("users").doc(userRecord.uid).set({
+        name,
+        email,
+        role,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      res.json({ success: true, uid: userRecord.uid });
+    } catch (error: any) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // Vite middleware for development
