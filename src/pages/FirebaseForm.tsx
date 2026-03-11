@@ -22,15 +22,20 @@ export const FirebaseForm = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchSubmissions = async () => {
+    // --- GET DATA FROM FIREBASE (FETCH) ---
     setFetching(true);
     setError(null);
     try {
+      // Create a query to get documents from the "form_submissions" collection
       const q = query(collection(db, "form_submissions"), orderBy("createdAt", "desc"));
       const querySnapshot = await getDocs(q);
+      
+      // Map the query results to our local state
       const data = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as FormData[];
+      
       setSubmissions(data);
     } catch (err: any) {
       console.error("Error fetching submissions:", err);
@@ -48,19 +53,26 @@ export const FirebaseForm = () => {
     e.preventDefault();
     if (!name || !email || !message) return;
 
+    // --- SAVE DATA TO FIREBASE (POST) ---
     setLoading(true);
     setError(null);
     try {
+      // Add a new document to the "form_submissions" collection
       await addDoc(collection(db, "form_submissions"), {
         name,
         email,
         message,
         createdAt: Timestamp.now()
       });
+      
+      // Reset form fields
       setName("");
       setEmail("");
       setMessage("");
+      
       alert("Form submitted successfully!");
+      
+      // Refresh the list to show the new entry
       fetchSubmissions();
     } catch (err: any) {
       console.error("Error adding document:", err);

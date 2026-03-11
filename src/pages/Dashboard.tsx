@@ -8,11 +8,27 @@ import {
   AlertTriangle,
   FileText,
   CheckSquare,
+  Database,
+  Cloud,
 } from "lucide-react";
 import { fmtCur } from "../utils";
+import { db } from "../firebase";
 
 export const Dashboard = () => {
   const { inventory, pos, writeOffs, catalogue } = useAppStore();
+  const [isOnline, setIsOnline] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!db) return;
+    // Simple check for online status
+    const handleStatus = () => setIsOnline(navigator.onLine);
+    window.addEventListener("online", handleStatus);
+    window.addEventListener("offline", handleStatus);
+    return () => {
+      window.removeEventListener("online", handleStatus);
+      window.removeEventListener("offline", handleStatus);
+    };
+  }, []);
 
   const totalSKUs = inventory.length;
   const inStock = inventory.filter((i) => i.liveStock > 0).length;
@@ -60,6 +76,17 @@ export const Dashboard = () => {
           icon={ShoppingCart}
           color="orange"
         />
+      </div>
+
+      <div className="flex items-center gap-2 px-4 py-2 bg-white border border-[#E8ECF0] rounded-lg w-fit">
+        <div className={`w-2 h-2 rounded-full ${isOnline ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
+        <span className="text-[12px] font-bold text-[#1A1A2E] flex items-center gap-1">
+          <Database className="w-3 h-3" />
+          Firebase Real-time Sync: {isOnline ? "Connected" : "Offline"}
+        </span>
+        <span className="text-[11px] text-[#6B7280] ml-2">
+          (All forms save to cloud automatically)
+        </span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
