@@ -81,7 +81,7 @@ export const MaterialPlanning = () => {
         title="Material Planning"
         sub="Plan materials for upcoming project milestones"
         actions={
-          role === "Project Manager" && (
+          (role === "Project Manager" || role === "Super Admin") && (
             <Btn label="New Plan" icon={Plus} onClick={() => setModal(true)} />
           )
         }
@@ -102,13 +102,28 @@ export const MaterialPlanning = () => {
                   {plan.project} • {plan.workType} • {plan.milestone}
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-[11px] font-bold text-[#6B7280] uppercase">
-                  Date
-                </p>
-                <p className="text-[13px] font-medium text-[#1A1A2E]">
-                  {plan.date}
-                </p>
+              <div className="flex items-center gap-2">
+                <div className="text-right">
+                  <p className="text-[11px] font-bold text-[#6B7280] uppercase">
+                    Date
+                  </p>
+                  <p className="text-[13px] font-medium text-[#1A1A2E]">
+                    {plan.date}
+                  </p>
+                </div>
+                {role === "Super Admin" && (
+                  <Btn
+                    label="Delete"
+                    color="red"
+                    small
+                    outline
+                    onClick={() => {
+                      if (confirm(`Delete plan ${plan.id}?`)) {
+                        setPlans(plans.filter(p => p.id !== plan.id));
+                      }
+                    }}
+                  />
+                )}
               </div>
             </div>
             <div className="p-4 overflow-x-auto">

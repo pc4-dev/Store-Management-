@@ -80,7 +80,7 @@ export const OutwardPage = () => {
         title="Outward & Material Issue"
         sub="Issue materials to site locations"
         actions={
-          role === "Store Incharge" && (
+          (role === "Store Incharge" || role === "Super Admin") && (
             <Btn
               label="Issue Material"
               icon={Plus}
@@ -142,7 +142,20 @@ export const OutwardPage = () => {
                   <td className="px-4 py-3 text-[13px] text-[#6B7280]">
                     {out.handoverTo}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right space-x-2">
+                    {role === "Super Admin" && (
+                      <Btn
+                        label="Delete"
+                        color="red"
+                        small
+                        outline
+                        onClick={() => {
+                          if (confirm(`Delete outward transaction ${out.id}?`)) {
+                            setOutwards(outwards.filter(o => o.id !== out.id));
+                          }
+                        }}
+                      />
+                    )}
                     <Btn
                       icon={Printer}
                       small

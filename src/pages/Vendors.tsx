@@ -90,6 +90,11 @@ export const Vendors = () => {
                 <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
                   Status
                 </th>
+                {role === "Super Admin" && (
+                  <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider text-right">
+                    Actions
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8ECF0]">
@@ -116,6 +121,21 @@ export const Vendors = () => {
                   <td className="px-4 py-3">
                     <StatusBadge status={v.status} />
                   </td>
+                  {role === "Super Admin" && (
+                    <td className="px-4 py-3 text-right">
+                      <Btn
+                        label="Delete"
+                        color="red"
+                        small
+                        outline
+                        onClick={() => {
+                          if (confirm(`Delete vendor ${v.name}?`)) {
+                            setVendors(vendors.filter(vendor => vendor.id !== v.id));
+                          }
+                        }}
+                      />
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

@@ -81,7 +81,7 @@ export const InwardPage = () => {
         title="Inward Transactions"
         sub="Record of all materials received"
         actions={
-          role === "Store Incharge" && (
+          (role === "Store Incharge" || role === "Super Admin") && (
             <Btn
               label="Manual Inward"
               icon={Plus}
@@ -144,6 +144,21 @@ export const InwardPage = () => {
                       {inw.type}
                     </span>
                   </td>
+                  {role === "Super Admin" && (
+                    <td className="px-4 py-3 text-right">
+                      <Btn
+                        label="Delete"
+                        color="red"
+                        small
+                        outline
+                        onClick={() => {
+                          if (confirm(`Delete inward transaction ${inw.id}?`)) {
+                            setInwards(inwards.filter(i => i.id !== inw.id));
+                          }
+                        }}
+                      />
+                    </td>
+                  )}
                 </tr>
               ))}
               {inwards.length === 0 && (

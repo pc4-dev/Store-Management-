@@ -84,12 +84,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          setRole(userData.role);
+          const rawRole = (userData.role || "").toString().trim();
+          const normalizedRole =
+            ({
+              "super admin": "Super Admin",
+              director: "Director",
+              agm: "AGM",
+              "project manager": "Project Manager",
+              "store incharge": "Store Incharge",
+            }[rawRole.toLowerCase()] || rawRole) as Role;
+
+          setRole(normalizedRole);
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email || "",
             name: userData.name || "User",
-            role: userData.role
+            role: normalizedRole,
           });
         }
       } else {
@@ -105,7 +115,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     // Real-time listener for Inventory from Firestore
     const unsubInventory = onSnapshot(collection(db, "inventory"), (snapshot) => {
-      if (snapshot.metadata.hasPendingWrites) return;
       const items = snapshot.docs.map(doc => doc.data() as InventoryItem);
       setInventoryState(items);
     }, (error) => {
@@ -114,7 +123,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     // Real-time listener for Catalogue from Firestore
     const unsubCatalogue = onSnapshot(collection(db, "catalogue"), (snapshot) => {
-      if (snapshot.metadata.hasPendingWrites) return;
       const items = snapshot.docs.map(doc => doc.data() as CatalogueEntry);
       setCatalogueState(items);
     }, (error) => {
@@ -123,7 +131,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     // Real-time listener for Vendors from Firestore
     const unsubVendors = onSnapshot(collection(db, "vendors"), (snapshot) => {
-      if (snapshot.metadata.hasPendingWrites) return;
       const items = snapshot.docs.map(doc => doc.data() as Vendor);
       setVendorsState(items);
     }, (error) => {
@@ -132,49 +139,42 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     // Real-time listener for POs from Firestore
     const unsubPos = onSnapshot(collection(db, "pos"), (snapshot) => {
-      if (snapshot.metadata.hasPendingWrites) return;
       const items = snapshot.docs.map(doc => doc.data() as PurchaseOrder);
       setPosState(items);
     });
 
     // Real-time listener for Plans from Firestore
     const unsubPlans = onSnapshot(collection(db, "plans"), (snapshot) => {
-      if (snapshot.metadata.hasPendingWrites) return;
       const items = snapshot.docs.map(doc => doc.data() as MaterialPlan);
       setPlansState(items);
     });
 
     // Real-time listener for GRNs from Firestore
     const unsubGrns = onSnapshot(collection(db, "grns"), (snapshot) => {
-      if (snapshot.metadata.hasPendingWrites) return;
       const items = snapshot.docs.map(doc => doc.data() as GRN);
       setGrnsState(items);
     });
 
     // Real-time listener for Inwards from Firestore
     const unsubInwards = onSnapshot(collection(db, "inwards"), (snapshot) => {
-      if (snapshot.metadata.hasPendingWrites) return;
       const items = snapshot.docs.map(doc => doc.data() as Inward);
       setInwardsState(items);
     });
 
     // Real-time listener for Outwards from Firestore
     const unsubOutwards = onSnapshot(collection(db, "outwards"), (snapshot) => {
-      if (snapshot.metadata.hasPendingWrites) return;
       const items = snapshot.docs.map(doc => doc.data() as Outward);
       setOutwardsState(items);
     });
 
     // Real-time listener for Returns from Firestore
     const unsubReturns = onSnapshot(collection(db, "returns"), (snapshot) => {
-      if (snapshot.metadata.hasPendingWrites) return;
       const items = snapshot.docs.map(doc => doc.data() as ReturnItem);
       setReturnsState(items);
     });
 
     // Real-time listener for WriteOffs from Firestore
     const unsubWriteOffs = onSnapshot(collection(db, "writeoffs"), (snapshot) => {
-      if (snapshot.metadata.hasPendingWrites) return;
       const items = snapshot.docs.map(doc => doc.data() as WriteOff);
       setWriteOffsState(items);
     });
@@ -202,103 +202,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const wrapSetter = <T,>(
-    setter: React.Dispatch<React.SetStateAction<T[]>>,
-    endpoint: string,
-    idField: keyof T = "id" as keyof T
-  ) => {
-    return (value: React.SetStateAction<T[]>) => {
-      setter((prev) => {
-        const next = typeof value === "function" ? (value as any)(prev) : value;
-        
-        // Only sync to local API if not on Vercel
-        if (!window.location.hostname.includes("vercel.app")) {
-          next.forEach((item: T) => {
-            fetch(endpoint, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(item),
-            }).catch(() => {});
-          });
-        }
-        return next;
-      });
-    };
-  };
-
-  const setInventory = (value: React.SetStateAction<InventoryItem[]>) => {
-    setInventoryState((prev) => {
-      const next = typeof value === "function" ? (value as any)(prev) : value;
-      
-      // Side effect: Sync only new or changed items to Firestore
-      Promise.resolve().then(() => {
-        const prevMap = new Map(prev.map(i => [i.sku, i]));
-        const changedOrNew = next.filter(item => {
-          const prevItem = prevMap.get(item.sku);
-          return !prevItem || JSON.stringify(prevItem) !== JSON.stringify(item);
-        });
-
-        changedOrNew.forEach(async (item) => {
-          try {
-            await setDoc(doc(db, "inventory", item.sku), item);
-          } catch (err) {
-            console.error("Error saving to Firestore:", err);
-          }
-        });
-      });
-
-      return next;
-    });
-  };
-
-  const setCatalogue = (value: React.SetStateAction<CatalogueEntry[]>) => {
-    setCatalogueState((prev) => {
-      const next = typeof value === "function" ? (value as any)(prev) : value;
-      
-      Promise.resolve().then(() => {
-        const prevMap = new Map(prev.map(i => [i.sku, i]));
-        const changedOrNew = next.filter(item => {
-          const prevItem = prevMap.get(item.sku);
-          return !prevItem || JSON.stringify(prevItem) !== JSON.stringify(item);
-        });
-
-        changedOrNew.forEach(async (item) => {
-          try {
-            await setDoc(doc(db, "catalogue", item.sku), item);
-          } catch (err) {
-            console.error("Error saving catalogue to Firestore:", err);
-          }
-        });
-      });
-
-      return next;
-    });
-  };
-
-  const setVendors = (value: React.SetStateAction<Vendor[]>) => {
-    setVendorsState((prev) => {
-      const next = typeof value === "function" ? (value as any)(prev) : value;
-      
-      Promise.resolve().then(() => {
-        const prevMap = new Map(prev.map(i => [i.id, i]));
-        const changedOrNew = next.filter(item => {
-          const prevItem = prevMap.get(item.id);
-          return !prevItem || JSON.stringify(prevItem) !== JSON.stringify(item);
-        });
-
-        changedOrNew.forEach(async (item) => {
-          try {
-            await setDoc(doc(db, "vendors", item.id), item);
-          } catch (err) {
-            console.error("Error saving vendor to Firestore:", err);
-          }
-        });
-      });
-
-      return next;
-    });
-  };
-
   const createFirestoreSetter = <T,>(
     setter: React.Dispatch<React.SetStateAction<T[]>>,
     collectionName: string,
@@ -309,7 +212,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const next = typeof value === "function" ? (value as any)(prev) : value;
         
         // Side effect: Sync only new or changed items
-        Promise.resolve().then(() => {
+        Promise.resolve().then(async () => {
+          if (!db) return;
+
           const prevMap = new Map(prev.map(i => [String(i[idField]), i]));
           const changedOrNew = next.filter(item => {
             const id = String(item[idField]);
@@ -318,18 +223,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             return !prevItem || JSON.stringify(prevItem) !== JSON.stringify(item);
           });
 
-          if (changedOrNew.length > 0) {
-            console.log(`Syncing ${changedOrNew.length} items to ${collectionName}...`);
-          }
-
-          changedOrNew.forEach(async (item: T) => {
+          for (const item of changedOrNew) {
             try {
               const id = String(item[idField]);
               await setDoc(doc(db, collectionName, id), item as any);
+              console.log(`Synced ${id} to ${collectionName}`);
             } catch (err) {
               console.error(`Error saving ${collectionName} to Firestore:`, err);
             }
-          });
+          }
         });
 
         return next;
@@ -337,6 +239,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     };
   };
 
+  const setInventory = createFirestoreSetter(setInventoryState, "inventory", "sku");
+  const setCatalogue = createFirestoreSetter(setCatalogueState, "catalogue", "sku");
+  const setVendors = createFirestoreSetter(setVendorsState, "vendors", "id");
   const setPos = createFirestoreSetter(setPosState, "pos");
   const setPlans = createFirestoreSetter(setPlansState, "plans");
   const setGrns = createFirestoreSetter(setGrnsState, "grns");

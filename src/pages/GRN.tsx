@@ -126,7 +126,7 @@ export const GRNPage = () => {
         title="Goods Receipt Note (GRN)"
         sub="Receive materials against approved POs"
         actions={
-          role === "Store Incharge" && (
+          (role === "Store Incharge" || role === "Super Admin") && (
             <Btn
               label="Create GRN"
               icon={Plus}
@@ -179,7 +179,20 @@ export const GRNPage = () => {
                   <td className="px-4 py-3">
                     <StatusBadge status={grn.status} />
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right space-x-2">
+                    {role === "Super Admin" && (
+                      <Btn
+                        label="Delete"
+                        color="red"
+                        small
+                        outline
+                        onClick={() => {
+                          if (confirm(`Delete GRN ${grn.id}?`)) {
+                            setGrns(grns.filter(g => g.id !== grn.id));
+                          }
+                        }}
+                      />
+                    )}
                     <Btn
                       icon={Printer}
                       small

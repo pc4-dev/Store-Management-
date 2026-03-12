@@ -115,7 +115,7 @@ export const Returns = () => {
         title="Returns & Challans"
         sub="Manage material returns from site or to suppliers"
         actions={
-          role === "Store Incharge" && (
+          (role === "Store Incharge" || role === "Super Admin") && (
             <Btn
               label="New Return"
               icon={Plus}
@@ -181,7 +181,20 @@ export const Returns = () => {
                   <td className="px-4 py-3">
                     <StatusBadge status={ret.condition} />
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right space-x-2">
+                    {role === "Super Admin" && (
+                      <Btn
+                        label="Delete"
+                        color="red"
+                        small
+                        outline
+                        onClick={() => {
+                          if (confirm(`Delete return challan ${ret.id}?`)) {
+                            setReturns(returns.filter(r => r.id !== ret.id));
+                          }
+                        }}
+                      />
+                    )}
                     <Btn
                       icon={Printer}
                       small

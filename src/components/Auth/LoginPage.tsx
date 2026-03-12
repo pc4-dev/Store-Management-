@@ -4,6 +4,7 @@ import { auth, db } from "../../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { useAppStore } from "../../store";
+import { Role } from "../../types";
 import { LogIn, Mail, Lock, AlertCircle, Loader2 } from "lucide-react";
 
 export const LoginPage = () => {
@@ -26,15 +27,24 @@ export const LoginPage = () => {
       const userDoc = await getDoc(doc(db, "users", user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        const role = userData.role;
-        setRole(role);
+        const rawRole = (userData.role || "").toString().trim();
+        const normalizedRole =
+          ({
+            "super admin": "Super Admin",
+            director: "Director",
+            agm: "AGM",
+            "project manager": "Project Manager",
+            "store incharge": "Store Incharge",
+          }[rawRole.toLowerCase()] || rawRole) as Role;
+
+        setRole(normalizedRole);
         setUser({
           uid: user.uid,
           email: user.email || "",
           name: userData.name || "User",
-          role: role
+          role: normalizedRole,
         });
-        
+
         await logActivity("Login", { email: user.email });
       } else {
         setError("User profile not found. Please contact administrator.");

@@ -166,16 +166,32 @@ export const Catalogue = () => {
                   </div>
                 </div>
 
-                {role === "Super Admin" && cat.status === "Draft" && (
-                  <Btn
-                    label="Approve"
-                    icon={Check}
-                    color="green"
-                    small
-                    onClick={() => handleApprove(cat.sku)}
-                    className="w-full"
-                  />
-                )}
+                <div className="flex gap-2 mt-auto">
+                  {role === "Super Admin" && cat.status === "Draft" && (
+                    <Btn
+                      label="Approve"
+                      icon={Check}
+                      color="green"
+                      small
+                      onClick={() => handleApprove(cat.sku)}
+                      className="flex-1"
+                    />
+                  )}
+                  {role === "Super Admin" && (
+                    <Btn
+                      label="Delete"
+                      color="red"
+                      small
+                      outline
+                      onClick={() => {
+                        if (confirm(`Delete catalogue entry for ${inv.name}?`)) {
+                          setCatalogue(catalogue.filter(c => c.sku !== cat.sku));
+                        }
+                      }}
+                      className={cat.status === "Draft" ? "" : "w-full"}
+                    />
+                  )}
+                </div>
               </div>
             </Card>
           );

@@ -121,6 +121,19 @@ export const WriteOffPage = () => {
                           />
                         </>
                       )}
+                    {role === "Super Admin" && (
+                      <Btn
+                        label="Delete"
+                        color="red"
+                        small
+                        outline
+                        onClick={() => {
+                          if (confirm(`Delete write-off request ${wo.id}?`)) {
+                            setWriteOffs(writeOffs.filter(w => w.id !== wo.id));
+                          }
+                        }}
+                      />
+                    )}
                   </td>
                 </tr>
               ))}

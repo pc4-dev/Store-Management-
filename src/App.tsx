@@ -41,7 +41,11 @@ const AppContent = () => {
       case "dashboard":
         return <Dashboard />;
       case "superadmin":
-        return role === "Super Admin" ? <SuperAdmin /> : <Dashboard />;
+        return (role || "").toString().trim().toLowerCase() === "super admin" ? (
+          <SuperAdmin />
+        ) : (
+          <Dashboard />
+        );
       case "catalogue":
         return <Catalogue />;
       case "vendors":
@@ -67,7 +71,11 @@ const AppContent = () => {
       case "archive":
         return <Archive />;
       case "firebase":
-        return <FirebaseForm />;
+        return (role || "").toString().trim().toLowerCase() === "super admin" ? (
+          <FirebaseForm />
+        ) : (
+          <Dashboard />
+        );
       default:
         return <Dashboard />;
     }

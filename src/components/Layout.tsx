@@ -191,17 +191,17 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       label: "Firebase Data",
       icon: Database,
       id: "firebase",
-      roles: [
-        "Super Admin",
-        "Director",
-        "AGM",
-        "Project Manager",
-        "Store Incharge",
-      ],
+      roles: ["Super Admin"],
     },
   ];
 
-  const visibleNav = navItems.filter((item) => item.roles.includes(role || ""));
+  const visibleNav = navItems.filter((item) => {
+    if (!role) return false;
+    const normalizedCurrentRole = role.toString().trim().toLowerCase();
+    return item.roles.some(
+      (r) => (r || "").toString().trim().toLowerCase() === normalizedCurrentRole,
+    );
+  });
 
   return (
     <div className="flex h-screen bg-[#F8F9FB] font-sans text-[#1A1A2E]">

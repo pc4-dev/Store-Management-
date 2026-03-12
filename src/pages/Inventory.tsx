@@ -128,7 +128,7 @@ export const Inventory = () => {
         title="Inventory"
         sub="Live stock and condition tracking"
         actions={
-          role === "Store Incharge" && (
+          (role === "Store Incharge" || role === "Super Admin") && (
             <Btn
               label="Add Item"
               icon={Plus}
@@ -241,7 +241,7 @@ export const Inventory = () => {
                       <StatusBadge status={item.condition} />
                     </td>
                     <td className="px-4 py-3">
-                      {role === "Store Incharge" && (
+                      {(role === "Store Incharge" || role === "Super Admin") && (
                         <div className="flex items-center gap-2">
                           <Btn
                             label="Tag"
@@ -272,6 +272,19 @@ export const Inventory = () => {
                               });
                             }}
                           />
+                          {role === "Super Admin" && (
+                            <Btn
+                              label="Delete"
+                              color="red"
+                              small
+                              outline
+                              onClick={() => {
+                                if (confirm(`Are you sure you want to delete ${item.name}?`)) {
+                                  setInventory(inventory.filter(i => i.sku !== item.sku));
+                                }
+                              }}
+                            />
+                          )}
                         </div>
                       )}
                     </td>

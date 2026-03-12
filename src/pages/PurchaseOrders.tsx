@@ -130,7 +130,7 @@ export const PurchaseOrders = () => {
         title="Purchase Orders"
         sub="Manage and approve POs"
         actions={
-          role === "Project Manager" && (
+          (role === "Project Manager" || role === "Super Admin") && (
             <Btn label="Create PO" icon={Plus} onClick={() => setModal(true)} />
           )
         }
@@ -186,7 +186,7 @@ export const PurchaseOrders = () => {
                     <StatusBadge status={po.status} />
                   </td>
                   <td className="px-4 py-3 text-right space-x-2">
-                    {role === "AGM" && po.status === "Pending L1" && (
+                    {(role === "AGM" || role === "Super Admin") && po.status === "Pending L1" && (
                       <Btn
                         label="Approve L1"
                         small
@@ -194,7 +194,7 @@ export const PurchaseOrders = () => {
                         onClick={() => handleApproveL1(po.id)}
                       />
                     )}
-                    {role === "Director" && po.status === "Pending L2" && (
+                    {(role === "Director" || role === "Super Admin") && po.status === "Pending L2" && (
                       <Btn
                         label="Approve L2"
                         small
@@ -202,13 +202,26 @@ export const PurchaseOrders = () => {
                         onClick={() => handleApproveL2(po.id)}
                       />
                     )}
-                    {role === "Director" && po.status === "Approved" && (
+                    {(role === "Director" || role === "Super Admin") && po.status === "Approved" && (
                       <Btn
                         label="Cancel"
                         small
                         color="red"
                         outline
                         onClick={() => handleCancel(po.id)}
+                      />
+                    )}
+                    {role === "Super Admin" && (
+                      <Btn
+                        label="Delete"
+                        color="red"
+                        small
+                        outline
+                        onClick={() => {
+                          if (confirm(`Delete PO ${po.id}?`)) {
+                            setPos(pos.filter(p => p.id !== po.id));
+                          }
+                        }}
                       />
                     )}
                     <Btn

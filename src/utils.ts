@@ -7,6 +7,7 @@ export const fmtCur = (n: number) =>
 export const fmt = (n: number) => new Intl.NumberFormat("en-IN").format(n);
 export const todayStr = () => new Date().toISOString().split("T")[0];
 export const genId = (prefix: string, count: number) => {
-  const ts = Date.now().toString().slice(-4);
-  return `${prefix}-2026-${String(count + 1).padStart(3, "0")}-${ts}`;
+  const ts = Date.now().toString().slice(-6);
+  const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+  return `${prefix}-2026-${String(count + 1).padStart(3, "0")}-${ts}-${random}`;
 };
