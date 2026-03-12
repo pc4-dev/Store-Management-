@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { collection, getDocs, doc, setDoc, onSnapshot, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, onSnapshot, getDoc, deleteDoc } from "firebase/firestore";
 import { db, auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import {
@@ -78,7 +78,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     minQuotesHigh: 3,
   });
 
+  const isFirebaseConfigured = !!import.meta.env.VITE_FIREBASE_API_KEY;
+
   useEffect(() => {
+    if (!isFirebaseConfigured) {
+      console.warn("Firebase configuration missing. Data will not be saved permanently.");
+      return;
+    }
+
     const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
@@ -211,28 +218,37 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setter((prev) => {
         const next = typeof value === "function" ? (value as any)(prev) : value;
         
-        // Side effect: Sync only new or changed items
-        Promise.resolve().then(async () => {
-          if (!db) return;
+        // Side effect: Sync changes to Firestore
+        if (db && isFirebaseConfigured) {
+          const prevMap = new Map<string, T>(prev.map(i => [String(i[idField]), i]));
+          const nextMap = new Map<string, T>(next.map(i => [String(i[idField]), i]));
 
-          const prevMap = new Map(prev.map(i => [String(i[idField]), i]));
-          const changedOrNew = next.filter(item => {
+          // Sync new or changed items
+          next.forEach(async (item) => {
             const id = String(item[idField]);
             const prevItem = prevMap.get(id);
-            // Deep comparison via stringify to detect changes in items array etc.
-            return !prevItem || JSON.stringify(prevItem) !== JSON.stringify(item);
+            if (!prevItem || JSON.stringify(prevItem) !== JSON.stringify(item)) {
+              try {
+                await setDoc(doc(db, collectionName, id), item as any);
+                console.log(`Synced ${id} to ${collectionName}`);
+              } catch (err) {
+                console.error(`Error saving ${id} to ${collectionName}:`, err);
+              }
+            }
           });
 
-          for (const item of changedOrNew) {
-            try {
-              const id = String(item[idField]);
-              await setDoc(doc(db, collectionName, id), item as any);
-              console.log(`Synced ${id} to ${collectionName}`);
-            } catch (err) {
-              console.error(`Error saving ${collectionName} to Firestore:`, err);
+          // Sync deletions
+          prevMap.forEach(async (_, id) => {
+            if (!nextMap.has(id)) {
+              try {
+                await deleteDoc(doc(db, collectionName, id));
+                console.log(`Deleted ${id} from ${collectionName}`);
+              } catch (err) {
+                console.error(`Error deleting ${id} from ${collectionName}:`, err);
+              }
             }
-          }
-        });
+          });
+        }
 
         return next;
       });

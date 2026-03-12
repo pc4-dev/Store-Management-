@@ -18,6 +18,7 @@ import {
   LogOut,
   Menu,
   Database,
+  AlertTriangle,
 } from "lucide-react";
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
@@ -276,7 +277,20 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-6">
+          {!import.meta.env.VITE_FIREBASE_API_KEY && (
+            <div className="mb-6 p-4 bg-orange-50 border-l-4 border-orange-400 text-orange-700 flex items-start gap-3 rounded-r-lg shadow-sm">
+              <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-[13px]">Firebase Not Configured</p>
+                <p className="text-[12px] mt-1 opacity-90">
+                  Data is currently being saved to local memory only. To enable permanent cloud storage, please configure your Firebase environment variables in the Settings menu.
+                </p>
+              </div>
+            </div>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );
