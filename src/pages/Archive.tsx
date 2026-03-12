@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useAppStore } from "../store";
-import { PageHeader, Card, StatusBadge } from "../components/ui";
-import { Search, AlertTriangle } from "lucide-react";
+import { PageHeader, Card, StatusBadge, Btn } from "../components/ui";
+import { Search, AlertTriangle, Download } from "lucide-react";
+import { exportToCSV } from "../utils";
 
 export const Archive = () => {
   const { inventory } = useAppStore();
@@ -18,6 +19,14 @@ export const Archive = () => {
       <PageHeader
         title="Historical Archive"
         sub="Read-only view of original Excel data (Mar 2023 onwards)"
+        actions={
+          <Btn
+            label="Export CSV"
+            icon={Download}
+            outline
+            onClick={() => exportToCSV(inventory, "Archive")}
+          />
+        }
       />
 
       <Card className="p-4 border-l-4 border-l-[#3B82F6] bg-blue-50 mb-6">

@@ -1,7 +1,8 @@
 import React from "react";
 import { useAppStore } from "../store";
 import { PageHeader, Card, StatusBadge, Btn } from "../components/ui";
-import { Check, X } from "lucide-react";
+import { Check, X, Download } from "lucide-react";
+import { exportToCSV } from "../utils";
 
 export const WriteOffPage = () => {
   const { writeOffs, setWriteOffs, inventory, setInventory, role } =
@@ -39,6 +40,14 @@ export const WriteOffPage = () => {
       <PageHeader
         title="Write-off Approvals"
         sub="Review and approve damaged or lost inventory write-offs"
+        actions={
+          <Btn
+            label="Export CSV"
+            icon={Download}
+            outline
+            onClick={() => exportToCSV(writeOffs, "WriteOffs")}
+          />
+        }
       />
 
       <Card className="p-0 overflow-hidden">

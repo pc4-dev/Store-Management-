@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useAppStore } from "../store";
 import { PageHeader, Card, Btn, Modal, Field, SField } from "../components/ui";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Download } from "lucide-react";
 import { Inward } from "../types";
-import { genId, todayStr } from "../utils";
+import { genId, todayStr, exportToCSV } from "../utils";
 
 export const InwardPage = () => {
   const { inwards, setInwards, inventory, setInventory, vendors, role } =
@@ -81,13 +81,21 @@ export const InwardPage = () => {
         title="Inward Transactions"
         sub="Record of all materials received"
         actions={
-          (role === "Store Incharge" || role === "Super Admin") && (
+          <div className="flex items-center gap-2">
             <Btn
-              label="Manual Inward"
-              icon={Plus}
-              onClick={() => setModal(true)}
+              label="Export CSV"
+              icon={Download}
+              outline
+              onClick={() => exportToCSV(inwards, "Inwards")}
             />
-          )
+            {(role === "Store Incharge" || role === "Super Admin") && (
+              <Btn
+                label="Manual Inward"
+                icon={Plus}
+                onClick={() => setModal(true)}
+              />
+            )}
+          </div>
         }
       />
 

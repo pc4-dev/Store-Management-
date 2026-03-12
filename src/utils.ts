@@ -11,3 +11,33 @@ export const genId = (prefix: string, count: number) => {
   const random = Math.random().toString(36).substring(2, 5).toUpperCase();
   return `${prefix}-2026-${String(count + 1).padStart(3, "0")}-${ts}-${random}`;
 };
+
+export const exportToCSV = (data: any[], filename: string) => {
+  if (!data || !data.length) return;
+
+  const headers = Object.keys(data[0]);
+  const csvContent = [
+    headers.join(","),
+    ...data.map((row) =>
+      headers
+        .map((header) => {
+          let val = row[header];
+          if (val === null || val === undefined) return "";
+          if (typeof val === "object") val = JSON.stringify(val);
+          const str = String(val).replace(/"/g, '""');
+          return `"${str}"`;
+        })
+        .join(","),
+    ),
+  ].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", `${filename}_${todayStr()}.csv`);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};

@@ -9,9 +9,9 @@ import {
   Field,
   SField,
 } from "../components/ui";
-import { Plus, Printer, Search, AlertTriangle } from "lucide-react";
+import { Plus, Printer, Search, AlertTriangle, Download } from "lucide-react";
 import { ReturnItem, WriteOff } from "../types";
-import { genId, todayStr } from "../utils";
+import { genId, todayStr, exportToCSV } from "../utils";
 
 export const Returns = () => {
   const {
@@ -115,13 +115,21 @@ export const Returns = () => {
         title="Returns & Challans"
         sub="Manage material returns from site or to suppliers"
         actions={
-          (role === "Store Incharge" || role === "Super Admin") && (
+          <div className="flex items-center gap-2">
             <Btn
-              label="New Return"
-              icon={Plus}
-              onClick={() => setModal(true)}
+              label="Export CSV"
+              icon={Download}
+              outline
+              onClick={() => exportToCSV(returns, "Returns")}
             />
-          )
+            {(role === "Store Incharge" || role === "Super Admin") && (
+              <Btn
+                label="New Return"
+                icon={Plus}
+                onClick={() => setModal(true)}
+              />
+            )}
+          </div>
         }
       />
 

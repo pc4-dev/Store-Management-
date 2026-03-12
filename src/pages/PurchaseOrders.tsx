@@ -15,9 +15,10 @@ import {
   Printer,
   MessageCircle,
   AlertTriangle,
+  Download,
 } from "lucide-react";
 import { PurchaseOrder, POLineItem } from "../types";
-import { fmtCur, genId, todayStr } from "../utils";
+import { fmtCur, genId, todayStr, exportToCSV } from "../utils";
 import { PROJECTS, WORK_TYPES } from "../data";
 
 export const PurchaseOrders = () => {
@@ -130,9 +131,21 @@ export const PurchaseOrders = () => {
         title="Purchase Orders"
         sub="Manage and approve POs"
         actions={
-          (role === "Project Manager" || role === "Super Admin") && (
-            <Btn label="Create PO" icon={Plus} onClick={() => setModal(true)} />
-          )
+          <div className="flex items-center gap-2">
+            <Btn
+              label="Export CSV"
+              icon={Download}
+              outline
+              onClick={() => exportToCSV(pos, "PurchaseOrders")}
+            />
+            {(role === "Project Manager" || role === "Super Admin") && (
+              <Btn
+                label="Create PO"
+                icon={Plus}
+                onClick={() => setModal(true)}
+              />
+            )}
+          </div>
         }
       />
 

@@ -9,9 +9,9 @@ import {
   Field,
   SField,
 } from "../components/ui";
-import { Plus, Printer } from "lucide-react";
+import { Plus, Printer, Download } from "lucide-react";
 import { GRN, GRNItem, Inward } from "../types";
-import { genId, todayStr } from "../utils";
+import { genId, todayStr, exportToCSV } from "../utils";
 
 export const GRNPage = () => {
   const {
@@ -126,13 +126,21 @@ export const GRNPage = () => {
         title="Goods Receipt Note (GRN)"
         sub="Receive materials against approved POs"
         actions={
-          (role === "Store Incharge" || role === "Super Admin") && (
+          <div className="flex items-center gap-2">
             <Btn
-              label="Create GRN"
-              icon={Plus}
-              onClick={() => setModal(true)}
+              label="Export CSV"
+              icon={Download}
+              outline
+              onClick={() => exportToCSV(grns, "GRN")}
             />
-          )
+            {(role === "Store Incharge" || role === "Super Admin") && (
+              <Btn
+                label="Create GRN"
+                icon={Plus}
+                onClick={() => setModal(true)}
+              />
+            )}
+          </div>
         }
       />
 

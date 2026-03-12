@@ -9,8 +9,9 @@ import {
   Field,
   SField,
 } from "../components/ui";
-import { Plus, Search, Image as ImageIcon, Check } from "lucide-react";
+import { Plus, Search, Image as ImageIcon, Check, Download } from "lucide-react";
 import { CatalogueEntry } from "../types";
+import { exportToCSV } from "../utils";
 
 export const Catalogue = () => {
   const { catalogue, setCatalogue, inventory, role } = useAppStore();
@@ -80,7 +81,15 @@ export const Catalogue = () => {
         title="Product Catalogue"
         sub="Detailed product specifications and images"
         actions={
-          <Btn label="Add Entry" icon={Plus} onClick={() => setModal(true)} />
+          <div className="flex items-center gap-2">
+            <Btn
+              label="Export CSV"
+              icon={Download}
+              outline
+              onClick={() => exportToCSV(catalogue, "Catalogue")}
+            />
+            <Btn label="Add Entry" icon={Plus} onClick={() => setModal(true)} />
+          </div>
         }
       />
 

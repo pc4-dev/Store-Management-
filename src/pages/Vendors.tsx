@@ -9,8 +9,9 @@ import {
   Field,
   SField,
 } from "../components/ui";
-import { Plus } from "lucide-react";
+import { Plus, Download } from "lucide-react";
 import { Vendor } from "../types";
+import { exportToCSV } from "../utils";
 
 export const Vendors = () => {
   const { vendors, setVendors, role } = useAppStore();
@@ -54,13 +55,21 @@ export const Vendors = () => {
         title="Vendor Database"
         sub="Manage suppliers and contractors"
         actions={
-          canEdit && (
+          <div className="flex items-center gap-2">
             <Btn
-              label="Add Vendor"
-              icon={Plus}
-              onClick={() => setModal(true)}
+              label="Export CSV"
+              icon={Download}
+              outline
+              onClick={() => exportToCSV(vendors, "Vendors")}
             />
-          )
+            {canEdit && (
+              <Btn
+                label="Add Vendor"
+                icon={Plus}
+                onClick={() => setModal(true)}
+              />
+            )}
+          </div>
         }
       />
 

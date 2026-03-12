@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useAppStore } from "../store";
 import { PageHeader, Card, Btn, Modal, Field, SField } from "../components/ui";
-import { Plus, Printer, Search, AlertTriangle } from "lucide-react";
+import { Plus, Printer, Search, AlertTriangle, Download } from "lucide-react";
 import { Outward } from "../types";
-import { genId, todayStr } from "../utils";
+import { genId, todayStr, exportToCSV } from "../utils";
 
 export const OutwardPage = () => {
   const { outwards, setOutwards, inventory, setInventory, role } =
@@ -80,13 +80,21 @@ export const OutwardPage = () => {
         title="Outward & Material Issue"
         sub="Issue materials to site locations"
         actions={
-          (role === "Store Incharge" || role === "Super Admin") && (
+          <div className="flex items-center gap-2">
             <Btn
-              label="Issue Material"
-              icon={Plus}
-              onClick={() => setModal(true)}
+              label="Export CSV"
+              icon={Download}
+              outline
+              onClick={() => exportToCSV(outwards, "Outwards")}
             />
-          )
+            {(role === "Store Incharge" || role === "Super Admin") && (
+              <Btn
+                label="Issue Material"
+                icon={Plus}
+                onClick={() => setModal(true)}
+              />
+            )}
+          </div>
         }
       />
 

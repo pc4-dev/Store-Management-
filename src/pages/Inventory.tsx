@@ -9,9 +9,10 @@ import {
   SField,
   Field,
 } from "../components/ui";
-import { Tag, Search, AlertTriangle, Plus } from "lucide-react";
+import { Tag, Search, AlertTriangle, Plus, Download } from "lucide-react";
 import { InventoryItem } from "../types";
 import { CATEGORIES, UNITS } from "../data";
+import { exportToCSV } from "../utils";
 
 export const Inventory = () => {
   const { inventory, setInventory, catalogue, role, setWriteOffs, writeOffs } =
@@ -128,13 +129,21 @@ export const Inventory = () => {
         title="Inventory"
         sub="Live stock and condition tracking"
         actions={
-          (role === "Store Incharge" || role === "Super Admin") && (
+          <div className="flex items-center gap-2">
             <Btn
-              label="Add Item"
-              icon={Plus}
-              onClick={() => setAddModal(true)}
+              label="Export CSV"
+              icon={Download}
+              outline
+              onClick={() => exportToCSV(inventory, "Inventory")}
             />
-          )
+            {(role === "Store Incharge" || role === "Super Admin") && (
+              <Btn
+                label="Add Item"
+                icon={Plus}
+                onClick={() => setAddModal(true)}
+              />
+            )}
+          </div>
         }
       />
 

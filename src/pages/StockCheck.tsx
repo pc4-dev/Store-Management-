@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { useAppStore } from "../store";
 import { PageHeader, Card, Btn, SField } from "../components/ui";
-import { CheckSquare, AlertTriangle, RefreshCw } from "lucide-react";
+import { CheckSquare, AlertTriangle, RefreshCw, Download } from "lucide-react";
 import { CATEGORIES } from "../data";
+import { exportToCSV } from "../utils";
 
 export const StockCheck = () => {
   const { inventory, setInventory, role } = useAppStore();
@@ -37,6 +38,14 @@ export const StockCheck = () => {
       <PageHeader
         title="Physical Stock Check"
         sub="Audit warehouse inventory against system records"
+        actions={
+          <Btn
+            label="Export CSV"
+            icon={Download}
+            outline
+            onClick={() => exportToCSV(inventory, "StockAudit")}
+          />
+        }
       />
 
       <Card className="p-4 mb-6">
