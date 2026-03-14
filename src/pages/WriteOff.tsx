@@ -13,25 +13,27 @@ export const WriteOffPage = () => {
     if (!wo) return;
 
     // Deduct from live stock permanently
-    const updatedInventory = [...inventory];
-    const invIdx = updatedInventory.findIndex((i) => i.sku === wo.sku);
-    if (invIdx >= 0) {
-      updatedInventory[invIdx] = {
-        ...updatedInventory[invIdx],
-        liveStock: Math.max(0, updatedInventory[invIdx].liveStock - wo.qty),
-      };
-      setInventory(updatedInventory);
-    }
+    setInventory((prev) => {
+      const updated = [...prev];
+      const idx = updated.findIndex((i) => i.sku === wo.sku);
+      if (idx >= 0) {
+        updated[idx] = {
+          ...updated[idx],
+          liveStock: Math.max(0, updated[idx].liveStock - wo.qty),
+        };
+      }
+      return updated;
+    });
 
-    setWriteOffs(
-      writeOffs.map((w) => (w.id === id ? { ...w, status: "Approved" } : w)),
+    setWriteOffs((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, status: "Approved" } : w)),
     );
   };
 
   const handleReject = (id: string) => {
     // Does not deduct stock, item remains in inventory (should be re-tagged)
-    setWriteOffs(
-      writeOffs.map((w) => (w.id === id ? { ...w, status: "Rejected" } : w)),
+    setWriteOffs((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, status: "Rejected" } : w)),
     );
   };
 
@@ -138,7 +140,7 @@ export const WriteOffPage = () => {
                         outline
                         onClick={() => {
                           if (confirm(`Delete write-off request ${wo.id}?`)) {
-                            setWriteOffs(writeOffs.filter(w => w.id !== wo.id));
+                            setWriteOffs((prev) => prev.filter(w => w.id !== wo.id));
                           }
                         }}
                       />

@@ -14,8 +14,12 @@ import { OutwardPage } from "./pages/Outward";
 import { Returns } from "./pages/Returns";
 import { WriteOffPage } from "./pages/WriteOff";
 import { StockCheck } from "./pages/StockCheck";
+import { StockCheckReports } from "./pages/StockCheckReports";
 import { Archive } from "./pages/Archive";
 import { InwardPage } from "./pages/Inward";
+import { InventoryImport } from "./pages/InventoryImport";
+import { InwardImport } from "./pages/InwardImport";
+import { OutwardImport } from "./pages/OutwardImport";
 import { FirebaseForm } from "./pages/FirebaseForm";
 
 const AppContent = () => {
@@ -52,6 +56,8 @@ const AppContent = () => {
         return <Vendors />;
       case "inventory":
         return <Inventory />;
+      case "inventory-import":
+        return <InventoryImport />;
       case "planning":
         return <MaterialPlanning />;
       case "pos":
@@ -60,14 +66,20 @@ const AppContent = () => {
         return <GRNPage />;
       case "inward":
         return <InwardPage />;
+      case "inward-import":
+        return <InwardImport />;
       case "outward":
         return <OutwardPage />;
+      case "outward-import":
+        return <OutwardImport />;
       case "returns":
         return <Returns />;
       case "writeoffs":
         return <WriteOffPage />;
       case "stockcheck":
         return <StockCheck />;
+      case "stockcheck-reports":
+        return <StockCheckReports />;
       case "archive":
         return <Archive />;
       case "firebase":

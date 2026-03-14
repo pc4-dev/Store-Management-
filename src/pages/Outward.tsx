@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAppStore } from "../store";
 import { PageHeader, Card, Btn, Modal, Field, SField } from "../components/ui";
-import { Plus, Printer, Search, AlertTriangle, Download } from "lucide-react";
+import { Plus, Printer, Search, AlertTriangle, Download, FileText } from "lucide-react";
 import { Outward } from "../types";
 import { genId, todayStr, exportToCSV } from "../utils";
 
@@ -9,6 +9,10 @@ export const OutwardPage = () => {
   const { outwards, setOutwards, inventory, setInventory, role } =
     useAppStore();
   const [modal, setModal] = useState(false);
+  const [editModal, setEditModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [editingOutward, setEditingOutward] = useState<Outward | null>(null);
+  const [outwardToDelete, setOutwardToDelete] = useState<Outward | null>(null);
   const [newOutward, setNewOutward] = useState<Partial<Outward>>({
     sku: "",
     name: "",
@@ -45,14 +49,19 @@ export const OutwardPage = () => {
       handoverTo: newOutward.handoverTo!,
     };
 
-    const updatedInventory = [...inventory];
-    updatedInventory[invIdx] = {
-      ...updatedInventory[invIdx],
-      liveStock: updatedInventory[invIdx].liveStock - outward.qty,
-    };
+    setInventory((prev) => {
+      const updated = [...prev];
+      const idx = updated.findIndex((i) => i.sku === outward.sku);
+      if (idx >= 0) {
+        updated[idx] = {
+          ...updated[idx],
+          liveStock: updated[idx].liveStock - outward.qty,
+        };
+      }
+      return updated;
+    });
 
-    setInventory(updatedInventory);
-    setOutwards([outward, ...outwards]);
+    setOutwards((prev) => [outward, ...prev]);
     setModal(false);
     setNewOutward({
       sku: "",
@@ -64,13 +73,38 @@ export const OutwardPage = () => {
     });
   };
 
-  const selectItem = (item: any) => {
-    setNewOutward({
-      ...newOutward,
-      sku: item.sku,
-      name: item.name,
-      unit: item.unit,
-    });
+  const handleUpdate = () => {
+    if (!editingOutward) return;
+    setOutwards((prev) =>
+      prev.map((o) => (o.id === editingOutward.id ? editingOutward : o)),
+    );
+    setEditModal(false);
+    setEditingOutward(null);
+  };
+
+  const handleDelete = () => {
+    if (!outwardToDelete) return;
+    setOutwards((prev) => prev.filter((o) => o.id !== outwardToDelete.id));
+    setDeleteModal(false);
+    setOutwardToDelete(null);
+  };
+
+  const selectItem = (item: any, isEdit = false) => {
+    if (isEdit && editingOutward) {
+      setEditingOutward({
+        ...editingOutward,
+        sku: item.sku,
+        name: item.name,
+        unit: item.unit,
+      });
+    } else {
+      setNewOutward({
+        ...newOutward,
+        sku: item.sku,
+        name: item.name,
+        unit: item.unit,
+      });
+    }
     setSearchItem("");
   };
 
@@ -88,11 +122,19 @@ export const OutwardPage = () => {
               onClick={() => exportToCSV(outwards, "Outwards")}
             />
             {(role === "Store Incharge" || role === "Super Admin") && (
-              <Btn
-                label="Issue Material"
-                icon={Plus}
-                onClick={() => setModal(true)}
-              />
+              <>
+                <Btn
+                  label="Smart Import"
+                  icon={FileText}
+                  outline
+                  onClick={() => (window.location.hash = "outward-import")}
+                />
+                <Btn
+                  label="Issue Material"
+                  icon={Plus}
+                  onClick={() => setModal(true)}
+                />
+              </>
             )}
           </div>
         }
@@ -152,24 +194,28 @@ export const OutwardPage = () => {
                   </td>
                   <td className="px-4 py-3 text-right space-x-2">
                     {role === "Super Admin" && (
-                      <Btn
-                        label="Delete"
-                        color="red"
-                        small
-                        outline
-                        onClick={() => {
-                          if (confirm(`Delete outward transaction ${out.id}?`)) {
-                            setOutwards(outwards.filter(o => o.id !== out.id));
-                          }
-                        }}
-                      />
+                      <>
+                        <Btn
+                          label="Edit"
+                          small
+                          outline
+                          onClick={() => {
+                            setEditingOutward(out);
+                            setEditModal(true);
+                          }}
+                        />
+                        <Btn
+                          label="Delete"
+                          color="red"
+                          small
+                          outline
+                          onClick={() => {
+                            setOutwardToDelete(out);
+                            setDeleteModal(true);
+                          }}
+                        />
+                      </>
                     )}
-                    <Btn
-                      icon={Printer}
-                      small
-                      outline
-                      onClick={() => window.print()}
-                    />
                   </td>
                 </tr>
               ))}
@@ -300,6 +346,141 @@ export const OutwardPage = () => {
                   !newOutward.handoverTo
                 }
               />
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {editModal && editingOutward && (
+        <Modal title="Edit Outward Transaction (MIS)" onClose={() => setEditModal(false)}>
+          <div className="space-y-4">
+            <div className="relative mb-4">
+              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1">
+                Select Item *
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search inventory..."
+                  value={searchItem}
+                  onChange={(e) => setSearchItem(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 border border-[#E8ECF0] rounded-lg text-[13px] focus:outline-none focus:border-[#F97316]"
+                />
+              </div>
+              {searchItem && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-[#E8ECF0] rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {inventory
+                    .filter(
+                      (i) =>
+                        i.name
+                          ?.toLowerCase()
+                          .includes(searchItem.toLowerCase()) &&
+                        i.liveStock > 0,
+                    )
+                    .map((i) => (
+                      <div
+                        key={i.sku}
+                        onClick={() => selectItem(i, true)}
+                        className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-[13px] flex justify-between"
+                      >
+                        <span>
+                          {i.name} ({i.sku})
+                        </span>
+                        <span className="font-bold text-[#10B981]">
+                          {i.liveStock} {i.unit}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-3 bg-gray-50 border border-[#E8ECF0] rounded-lg mb-4">
+              <p className="text-[11px] font-bold text-[#6B7280] uppercase">
+                Selected Item
+              </p>
+              <div className="flex justify-between items-center mt-1">
+                <p className="text-[13px] font-medium text-[#1A1A2E]">
+                  {editingOutward.name}
+                </p>
+                <p className="text-[13px] font-bold text-[#10B981]">
+                  Available:{" "}
+                  {inventory.find((i) => i.sku === editingOutward.sku)?.liveStock}{" "}
+                  {editingOutward.unit}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field
+                label="Quantity to Issue"
+                type="number"
+                value={editingOutward.qty}
+                onChange={(e: any) =>
+                  setEditingOutward({ ...editingOutward, qty: Number(e.target.value) })
+                }
+                required
+              />
+              <SField
+                label="Location"
+                value={editingOutward.location}
+                onChange={(e: any) =>
+                  setEditingOutward({ ...editingOutward, location: e.target.value })
+                }
+                options={[
+                  "Villa No.",
+                  "Club House",
+                  "Plant",
+                  "G+10",
+                  "Main Gate",
+                  "Other",
+                ]}
+                required
+              />
+            </div>
+            <Field
+              label="Handover To (Name/Phone)"
+              value={editingOutward.handoverTo}
+              onChange={(e: any) =>
+                setEditingOutward({ ...editingOutward, handoverTo: e.target.value })
+              }
+              required
+            />
+
+            <div className="flex justify-end gap-2 mt-6">
+              <Btn label="Cancel" outline onClick={() => setEditModal(false)} />
+              <Btn
+                label="Update MIS"
+                onClick={handleUpdate}
+                disabled={
+                  !editingOutward.sku ||
+                  !editingOutward.qty ||
+                  Number(editingOutward.qty) <= 0 ||
+                  !editingOutward.location ||
+                  !editingOutward.handoverTo
+                }
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deleteModal && outwardToDelete && (
+        <Modal title="Confirm Delete" onClose={() => setDeleteModal(false)}>
+          <div className="p-4">
+            <p className="text-[14px] text-gray-600 mb-6">
+              Are you sure you want to delete outward transaction{" "}
+              <span className="font-bold text-[#1A1A2E]">{outwardToDelete.id}</span>?
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Btn
+                label="Cancel"
+                outline
+                onClick={() => setDeleteModal(false)}
+              />
+              <Btn label="Delete Transaction" color="red" onClick={handleDelete} />
             </div>
           </div>
         </Modal>

@@ -1,36 +1,50 @@
 import React, { useState } from "react";
 import { useAppStore } from "../store";
 import { PageHeader, Card, Btn, SField } from "../components/ui";
-import { CheckSquare, AlertTriangle, RefreshCw, Download } from "lucide-react";
+import { CheckSquare, AlertTriangle, RefreshCw, Download, Save } from "lucide-react";
 import { CATEGORIES } from "../data";
-import { exportToCSV } from "../utils";
+import { exportToCSV, genId, todayStr } from "../utils";
+import { StockCheckRecord } from "../types";
 
 export const StockCheck = () => {
-  const { inventory, setInventory, role } = useAppStore();
+  const { inventory, setInventory, role, setStockCheckRecords, user } = useAppStore();
   const [category, setCategory] = useState("");
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [remarks, setRemarks] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filtered = category
     ? inventory.filter((i) => i.category === category)
     : [];
 
-  const handleAdjust = (sku: string, physicalCount: number) => {
-    const updatedInventory = [...inventory];
-    const invIdx = updatedInventory.findIndex((i) => i.sku === sku);
-    if (invIdx >= 0) {
-      updatedInventory[invIdx] = {
-        ...updatedInventory[invIdx],
-        liveStock: physicalCount,
+  const handleSubmitAudit = () => {
+    if (!category) return;
+    
+    const auditItems = filtered.map(item => {
+      const physicalQty = counts[item.sku] !== undefined ? Number(counts[item.sku]) : item.liveStock;
+      return {
+        sku: item.sku,
+        name: item.name,
+        systemQty: item.liveStock,
+        physicalQty,
+        variance: physicalQty - item.liveStock,
+        remark: remarks[item.sku] || ""
       };
-      setInventory(updatedInventory);
+    });
 
-      // Clear count after adjustment
-      const newCounts = { ...counts };
-      delete newCounts[sku];
-      setCounts(newCounts);
+    const record: StockCheckRecord = {
+      id: genId("SC", Date.now()),
+      date: todayStr(),
+      checkedBy: user?.name || "Unknown",
+      category,
+      items: auditItems
+    };
 
-      alert(`Stock adjusted to ${physicalCount} for ${sku}`);
-    }
+    setStockCheckRecords(prev => [record, ...prev]);
+    
+    setCounts({});
+    setRemarks({});
+    alert("Audit report saved successfully. Inventory levels remain unchanged.");
   };
 
   return (
@@ -39,12 +53,21 @@ export const StockCheck = () => {
         title="Physical Stock Check"
         sub="Audit warehouse inventory against system records"
         actions={
-          <Btn
-            label="Export CSV"
-            icon={Download}
-            outline
-            onClick={() => exportToCSV(inventory, "StockAudit")}
-          />
+          <div className="flex gap-2">
+            <Btn
+              label="Export CSV"
+              icon={Download}
+              outline
+              onClick={() => exportToCSV(inventory, "StockAudit")}
+            />
+            {category && (
+              <Btn
+                label="Submit Audit"
+                icon={Save}
+                onClick={handleSubmitAudit}
+              />
+            )}
+          </div>
         }
       />
 
@@ -80,8 +103,8 @@ export const StockCheck = () => {
                   <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider text-right">
                     Variance
                   </th>
-                  <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider text-right">
-                    Actions
+                  <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
+                    Remarks
                   </th>
                 </tr>
               </thead>
@@ -91,9 +114,19 @@ export const StockCheck = () => {
                     counts[item.sku] !== undefined ? counts[item.sku] : "";
                   const variance =
                     count !== "" ? Number(count) - item.liveStock : 0;
+                  const hasInput = count !== "";
 
                   return (
-                    <tr key={item.sku} className="hover:bg-gray-50/50">
+                    <tr 
+                      key={item.sku} 
+                      className={`hover:bg-gray-50/50 transition-colors ${
+                        hasInput 
+                          ? variance !== 0 
+                            ? "bg-red-50" 
+                            : "bg-green-50" 
+                          : ""
+                      }`}
+                    >
                       <td className="px-4 py-3 text-[13px] font-mono text-[#6B7280]">
                         {item.sku}
                       </td>
@@ -129,19 +162,19 @@ export const StockCheck = () => {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        {count !== "" &&
-                          variance !== 0 &&
-                          role === "Store Incharge" && (
-                            <Btn
-                              label="Adjust"
-                              small
-                              outline
-                              onClick={() =>
-                                handleAdjust(item.sku, Number(count))
-                              }
-                            />
-                          )}
+                      <td className="px-4 py-3">
+                        <input
+                          type="text"
+                          value={remarks[item.sku] || ""}
+                          onChange={(e) =>
+                            setRemarks({
+                              ...remarks,
+                              [item.sku]: e.target.value,
+                            })
+                          }
+                          className="w-full px-2 py-1 border rounded text-[13px]"
+                          placeholder="Add remark..."
+                        />
                       </td>
                     </tr>
                   );

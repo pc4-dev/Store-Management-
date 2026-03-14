@@ -12,6 +12,13 @@ export const genId = (prefix: string, count: number) => {
   return `${prefix}-2026-${String(count + 1).padStart(3, "0")}-${ts}-${random}`;
 };
 
+export const generateSku = (category: string, subCategory: string, count: number) => {
+  const cat = (category || "MIS").substring(0, 3).charAt(0).toUpperCase() + (category || "MIS").substring(1, 3).toLowerCase();
+  const sub = (subCategory || "GEN").substring(0, 3).charAt(0).toUpperCase() + (subCategory || "GEN").substring(1, 3).toLowerCase();
+  const num = String(count + 1).padStart(4, "0");
+  return `${cat}/${sub}/${num}`;
+};
+
 export const exportToCSV = (data: any[], filename: string) => {
   if (!data || !data.length) return;
 

@@ -45,7 +45,7 @@ export const Catalogue = () => {
       image: newEntry.image || "",
       status: "Draft",
     };
-    setCatalogue([entry, ...catalogue]);
+    setCatalogue((prev) => [entry, ...prev]);
     setModal(false);
     setNewEntry({
       sku: "",
@@ -59,8 +59,8 @@ export const Catalogue = () => {
   };
 
   const handleApprove = (sku: string) => {
-    setCatalogue(
-      catalogue.map((c) => (c.sku === sku ? { ...c, status: "Approved" } : c)),
+    setCatalogue((prev) =>
+      prev.map((c) => (c.sku === sku ? { ...c, status: "Approved" } : c)),
     );
   };
 
@@ -194,7 +194,7 @@ export const Catalogue = () => {
                       outline
                       onClick={() => {
                         if (confirm(`Delete catalogue entry for ${inv.name}?`)) {
-                          setCatalogue(catalogue.filter(c => c.sku !== cat.sku));
+                          setCatalogue((prev) => prev.filter(c => c.sku !== cat.sku));
                         }
                       }}
                       className={cat.status === "Draft" ? "" : "w-full"}

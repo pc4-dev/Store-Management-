@@ -20,6 +20,7 @@ import {
   BarChart3,
   Search,
   Users,
+  Archive,
 } from "lucide-react";
 import { fmtCur } from "../utils";
 import { db } from "../firebase";
@@ -166,6 +167,14 @@ export const Dashboard = () => {
             <QuickAction icon={ArrowUpFromLine} label="Material Outward" href="#outward" color="green" />
             <QuickAction icon={Undo2} label="Returns Mgmt" href="#returns" color="green" />
             <QuickAction icon={CheckSquare} label="Stock Tracking" href="#stockcheck" color="green" />
+          </>
+        )}
+        {role === "Audit" && (
+          <>
+            <QuickAction icon={Package} label="View Inventory" href="#inventory" color="blue" />
+            <QuickAction icon={CheckSquare} label="Stock Check" href="#stockcheck" color="blue" />
+            <QuickAction icon={FileText} label="Stock Reports" href="#stockcheck-reports" color="blue" />
+            <QuickAction icon={Archive} label="View Archive" href="#archive" color="blue" />
           </>
         )}
       </div>

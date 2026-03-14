@@ -93,10 +93,10 @@ export const SuperAdmin = () => {
         { id: "PO-2024-001", project: "Garden City Phase 1", vendor: "UltraTech Cement", totalValue: 45000, status: "Pending L1", createdAt: new Date().toISOString() },
       ];
 
-      setCatalogue(sampleCatalogue as any);
-      setInventory(sampleInventory as any);
-      setVendors(sampleVendors as any);
-      setPos(samplePOs as any);
+      setCatalogue((prev) => sampleCatalogue as any);
+      setInventory((prev) => sampleInventory as any);
+      setVendors((prev) => sampleVendors as any);
+      setPos((prev) => samplePOs as any);
 
       alert("Sample data seeded successfully! Check your dashboard now.");
     } catch (err) {
@@ -113,8 +113,8 @@ export const SuperAdmin = () => {
   );
 
   const handleForceApprove = (id: string) => {
-    setPos(
-      pos.map((p) =>
+    setPos((prev) =>
+      prev.map((p) =>
         p.id === id
           ? {
               ...p,
@@ -128,7 +128,7 @@ export const SuperAdmin = () => {
   };
 
   const handleBlock = (id: string) => {
-    setPos(pos.map((p) => (p.id === id ? { ...p, status: "Blocked" } : p)));
+    setPos((prev) => prev.map((p) => (p.id === id ? { ...p, status: "Blocked" } : p)));
   };
 
   return (

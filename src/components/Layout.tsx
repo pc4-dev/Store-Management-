@@ -36,6 +36,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         "AGM",
         "Project Manager",
         "Store Incharge",
+        "Audit",
       ],
     },
     {
@@ -78,7 +79,14 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         "AGM",
         "Project Manager",
         "Store Incharge",
+        "Audit",
       ],
+    },
+    {
+      label: "Smart Import",
+      icon: FileText,
+      id: "inventory-import",
+      roles: ["Super Admin", "Director", "AGM"],
     },
     {
       label: "Material Plan",
@@ -129,6 +137,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       ],
     },
     {
+      label: "Inward Import",
+      icon: FileText,
+      id: "inward-import",
+      roles: ["Super Admin", "Store Incharge"],
+    },
+    {
       label: "Outward",
       icon: ArrowUpFromLine,
       id: "outward",
@@ -139,6 +153,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         "Project Manager",
         "Store Incharge",
       ],
+    },
+    {
+      label: "Outward Import",
+      icon: FileText,
+      id: "outward-import",
+      roles: ["Super Admin", "Store Incharge"],
     },
     {
       label: "Returns",
@@ -174,6 +194,20 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         "AGM",
         "Project Manager",
         "Store Incharge",
+        "Audit",
+      ],
+    },
+    {
+      label: "Stock Reports",
+      icon: FileText,
+      id: "stockcheck-reports",
+      roles: [
+        "Super Admin",
+        "Director",
+        "AGM",
+        "Project Manager",
+        "Store Incharge",
+        "Audit",
       ],
     },
     {
@@ -186,6 +220,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         "AGM",
         "Project Manager",
         "Store Incharge",
+        "Audit",
       ],
     },
     {
@@ -208,7 +243,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     <div className="flex h-screen bg-[#F8F9FB] font-sans text-[#1A1A2E]">
       {/* Sidebar */}
       <div
-        className={`${collapsed ? "w-16" : "w-[230px]"} bg-[#1A1A2E] text-white transition-all duration-300 flex flex-col shrink-0`}
+        className={`${collapsed ? "w-16" : "w-[230px]"} bg-[#1A1A2E] text-white transition-all duration-300 flex flex-col shrink-0 no-print`}
       >
         <div className="h-14 flex items-center px-4 border-b border-white/10 shrink-0">
           <div className="w-8 h-8 bg-[#F97316] rounded flex items-center justify-center font-bold text-lg shrink-0">
@@ -251,7 +286,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 bg-white border-b border-[#E8ECF0] flex items-center justify-between px-4 shrink-0">
+        <header className="h-14 bg-white border-b border-[#E8ECF0] flex items-center justify-between px-4 shrink-0 no-print">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setCollapsed(!collapsed)}
@@ -279,7 +314,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
         <main className="flex-1 overflow-y-auto p-6">
           {!import.meta.env.VITE_FIREBASE_API_KEY && (
-            <div className="mb-6 p-4 bg-orange-50 border-l-4 border-orange-400 text-orange-700 flex items-start gap-3 rounded-r-lg shadow-sm">
+            <div className="mb-6 p-4 bg-orange-50 border-l-4 border-orange-400 text-orange-700 flex items-start gap-3 rounded-r-lg shadow-sm no-print">
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold text-[13px]">Firebase Not Configured</p>

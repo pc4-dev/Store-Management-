@@ -24,12 +24,16 @@ export const Returns = () => {
     role,
   } = useAppStore();
   const [modal, setModal] = useState(false);
+  const [editModal, setEditModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [editingReturn, setEditingReturn] = useState<ReturnItem | null>(null);
+  const [returnToDelete, setReturnToDelete] = useState<ReturnItem | null>(null);
   const [newReturn, setNewReturn] = useState<Partial<ReturnItem>>({
     sku: "",
     name: "",
     qty: 0,
     unit: "",
-    type: "From Site",
+    type: "Outward Return (From Site)",
     condition: "Good",
     sourceSite: "",
     remarks: "",
@@ -45,53 +49,77 @@ export const Returns = () => {
       qty: Number(newReturn.qty!),
       unit: newReturn.unit!,
       date: todayStr(),
-      type: newReturn.type as "From Site" | "To Supplier",
+      type: newReturn.type as "Outward Return (From Site)" | "Inward Return (To Supplier)",
       condition: newReturn.condition as any,
       sourceSite: newReturn.sourceSite,
       remarks: newReturn.remarks,
       handoverFrom: newReturn.handoverFrom,
     };
 
-    if (ret.type === "From Site") {
-      const updatedInventory = [...inventory];
-      const invIdx = updatedInventory.findIndex((i) => i.sku === ret.sku);
-
-      if (invIdx >= 0) {
-        updatedInventory[invIdx] = {
-          ...updatedInventory[invIdx],
-          liveStock: updatedInventory[invIdx].liveStock + ret.qty,
-          condition: ret.condition,
-        };
-        setInventory(updatedInventory);
-      }
+    if (ret.type === "Outward Return (From Site)") {
+      setInventory((prev) => {
+        const updated = [...prev];
+        const idx = updated.findIndex((i) => i.sku === ret.sku);
+        if (idx >= 0) {
+          updated[idx] = {
+            ...updated[idx],
+            liveStock: updated[idx].liveStock + ret.qty,
+            condition: ret.condition,
+          };
+        }
+        return updated;
+      });
 
       if (ret.condition === "Damaged") {
-        const wo: WriteOff = {
-          id: genId("WO", writeOffs.length),
-          sku: ret.sku,
-          name: ret.name,
-          qty: ret.qty,
-          unit: ret.unit,
-          reason: `Auto-created from Return Challan ${ret.id}`,
-          requestedBy: role || "System",
-          date: todayStr(),
-          status: "Pending",
-        };
-        setWriteOffs([wo, ...writeOffs]);
+        setWriteOffs((prev) => [
+          {
+            id: genId("WO", prev.length),
+            sku: ret.sku,
+            name: ret.name,
+            qty: ret.qty,
+            unit: ret.unit,
+            reason: `Auto-created from Return Challan ${ret.id}`,
+            requestedBy: role || "System",
+            date: todayStr(),
+            status: "Pending",
+          },
+          ...prev,
+        ]);
         alert(
           "Item marked as Damaged. Write-off request auto-created for approval.",
         );
       }
+    } else if (ret.type === "Inward Return (To Supplier)") {
+      let success = true;
+      setInventory((prev) => {
+        const updated = [...prev];
+        const idx = updated.findIndex((i) => i.sku === ret.sku);
+        if (idx >= 0) {
+          if (updated[idx].liveStock < ret.qty) {
+            alert(
+              `Insufficient stock for ${ret.name}. Available: ${updated[idx].liveStock}`,
+            );
+            success = false;
+            return prev;
+          }
+          updated[idx] = {
+            ...updated[idx],
+            liveStock: updated[idx].liveStock - ret.qty,
+          };
+        }
+        return updated;
+      });
+      if (!success) return;
     }
 
-    setReturns([ret, ...returns]);
+    setReturns((prev) => [ret, ...prev]);
     setModal(false);
     setNewReturn({
       sku: "",
       name: "",
       qty: 0,
       unit: "",
-      type: "From Site",
+      type: "Outward Return (From Site)",
       condition: "Good",
       sourceSite: "",
       remarks: "",
@@ -99,13 +127,38 @@ export const Returns = () => {
     });
   };
 
-  const selectItem = (item: any) => {
-    setNewReturn({
-      ...newReturn,
-      sku: item.sku,
-      name: item.name,
-      unit: item.unit,
-    });
+  const handleUpdate = () => {
+    if (!editingReturn) return;
+    setReturns((prev) =>
+      prev.map((r) => (r.id === editingReturn.id ? editingReturn : r)),
+    );
+    setEditModal(false);
+    setEditingReturn(null);
+  };
+
+  const handleDelete = () => {
+    if (!returnToDelete) return;
+    setReturns((prev) => prev.filter((r) => r.id !== returnToDelete.id));
+    setDeleteModal(false);
+    setReturnToDelete(null);
+  };
+
+  const selectItem = (item: any, isEdit = false) => {
+    if (isEdit && editingReturn) {
+      setEditingReturn({
+        ...editingReturn,
+        sku: item.sku,
+        name: item.name,
+        unit: item.unit,
+      });
+    } else {
+      setNewReturn({
+        ...newReturn,
+        sku: item.sku,
+        name: item.name,
+        unit: item.unit,
+      });
+    }
     setSearchItem("");
   };
 
@@ -172,7 +225,7 @@ export const Returns = () => {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`text-[11px] font-bold px-2 py-1 rounded-full ${ret.type === "From Site" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}
+                      className={`text-[11px] font-bold px-2 py-1 rounded-full ${ret.type === "Outward Return (From Site)" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}
                     >
                       {ret.type}
                     </span>
@@ -183,32 +236,39 @@ export const Returns = () => {
                       {ret.sku}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-[13px] font-bold text-right text-[#10B981]">
-                    +{ret.qty} {ret.unit}
+                  <td
+                    className={`px-4 py-3 text-[13px] font-bold text-right ${ret.type === "Outward Return (From Site)" ? "text-[#10B981]" : "text-orange-600"}`}
+                  >
+                    {ret.type === "Outward Return (From Site)" ? "+" : "-"}
+                    {ret.qty} {ret.unit}
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={ret.condition} />
                   </td>
                   <td className="px-4 py-3 text-right space-x-2">
                     {role === "Super Admin" && (
-                      <Btn
-                        label="Delete"
-                        color="red"
-                        small
-                        outline
-                        onClick={() => {
-                          if (confirm(`Delete return challan ${ret.id}?`)) {
-                            setReturns(returns.filter(r => r.id !== ret.id));
-                          }
-                        }}
-                      />
+                      <>
+                        <Btn
+                          label="Edit"
+                          small
+                          outline
+                          onClick={() => {
+                            setEditingReturn(ret);
+                            setEditModal(true);
+                          }}
+                        />
+                        <Btn
+                          label="Delete"
+                          color="red"
+                          small
+                          outline
+                          onClick={() => {
+                            setReturnToDelete(ret);
+                            setDeleteModal(true);
+                          }}
+                        />
+                      </>
                     )}
-                    <Btn
-                      icon={Printer}
-                      small
-                      outline
-                      onClick={() => window.print()}
-                    />
                   </td>
                 </tr>
               ))}
@@ -236,7 +296,7 @@ export const Returns = () => {
               onChange={(e: any) =>
                 setNewReturn({ ...newReturn, type: e.target.value })
               }
-              options={["From Site", "To Supplier"]}
+              options={["Inward Return (To Supplier)", "Outward Return (From Site)"]}
               required
             />
 
@@ -300,13 +360,13 @@ export const Returns = () => {
                 onChange={(e: any) =>
                   setNewReturn({ ...newReturn, condition: e.target.value })
                 }
-                options={["New", "Good", "Needs Repair", "Damaged"]}
+                options={["New", "Good", "Needs Repair", "Damaged", "NA"]}
                 required
               />
             </div>
 
             {newReturn.condition === "Damaged" &&
-              newReturn.type === "From Site" && (
+              newReturn.type === "Outward Return (From Site)" && (
                 <div className="p-3 bg-red-50 text-red-700 text-[13px] rounded-lg border border-red-200 flex items-start gap-2 mb-4">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   This will auto-create a write-off request for AGM/Director
@@ -320,7 +380,7 @@ export const Returns = () => {
               onChange={(e: any) =>
                 setNewReturn({ ...newReturn, sourceSite: e.target.value })
               }
-              required={newReturn.type === "From Site"}
+              required={newReturn.type === "Outward Return (From Site)"}
             />
             <Field
               label="Handover From (Name/Phone)"
@@ -345,9 +405,144 @@ export const Returns = () => {
                 disabled={
                   !newReturn.sku ||
                   !newReturn.qty ||
-                  (newReturn.type === "From Site" && !newReturn.sourceSite)
+                  (newReturn.type === "Outward Return (From Site)" && !newReturn.sourceSite)
                 }
               />
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {editModal && editingReturn && (
+        <Modal title="Edit Return Challan" onClose={() => setEditModal(false)}>
+          <div className="space-y-4">
+            <SField
+              label="Return Type"
+              value={editingReturn.type}
+              onChange={(e: any) =>
+                setEditingReturn({ ...editingReturn, type: e.target.value })
+              }
+              options={["Inward Return (To Supplier)", "Outward Return (From Site)"]}
+              required
+            />
+
+            <div className="relative mb-4">
+              <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1">
+                Select Item *
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search inventory..."
+                  value={searchItem}
+                  onChange={(e) => setSearchItem(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 border border-[#E8ECF0] rounded-lg text-[13px] focus:outline-none focus:border-[#F97316]"
+                />
+              </div>
+              {searchItem && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-[#E8ECF0] rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {inventory
+                    .filter((i) =>
+                      i.name?.toLowerCase().includes(searchItem.toLowerCase()),
+                    )
+                    .map((i) => (
+                      <div
+                        key={i.sku}
+                        onClick={() => selectItem(i, true)}
+                        className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-[13px]"
+                      >
+                        {i.name} ({i.sku})
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-3 bg-gray-50 border border-[#E8ECF0] rounded-lg mb-4">
+              <p className="text-[11px] font-bold text-[#6B7280] uppercase">
+                Selected Item
+              </p>
+              <p className="text-[13px] font-medium text-[#1A1A2E] mt-1">
+                {editingReturn.name} ({editingReturn.sku})
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field
+                label="Quantity Returned"
+                type="number"
+                value={editingReturn.qty}
+                onChange={(e: any) =>
+                  setEditingReturn({ ...editingReturn, qty: Number(e.target.value) })
+                }
+                required
+              />
+              <SField
+                label="Condition"
+                value={editingReturn.condition}
+                onChange={(e: any) =>
+                  setEditingReturn({ ...editingReturn, condition: e.target.value })
+                }
+                options={["New", "Good", "Needs Repair", "Damaged", "NA"]}
+                required
+              />
+            </div>
+
+            <Field
+              label="Source Site / Location"
+              value={editingReturn.sourceSite}
+              onChange={(e: any) =>
+                setEditingReturn({ ...editingReturn, sourceSite: e.target.value })
+              }
+              required={editingReturn.type === "Outward Return (From Site)"}
+            />
+            <Field
+              label="Handover From (Name/Phone)"
+              value={editingReturn.handoverFrom}
+              onChange={(e: any) =>
+                setEditingReturn({ ...editingReturn, handoverFrom: e.target.value })
+              }
+            />
+            <Field
+              label="Remarks"
+              value={editingReturn.remarks}
+              onChange={(e: any) =>
+                setEditingReturn({ ...editingReturn, remarks: e.target.value })
+              }
+            />
+
+            <div className="flex justify-end gap-2 mt-6">
+              <Btn label="Cancel" outline onClick={() => setEditModal(false)} />
+              <Btn
+                label="Update Return"
+                onClick={handleUpdate}
+                disabled={
+                  !editingReturn.sku ||
+                  !editingReturn.qty ||
+                  (editingReturn.type === "Outward Return (From Site)" && !editingReturn.sourceSite)
+                }
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deleteModal && returnToDelete && (
+        <Modal title="Confirm Delete" onClose={() => setDeleteModal(false)}>
+          <div className="p-4">
+            <p className="text-[14px] text-gray-600 mb-6">
+              Are you sure you want to delete return challan{" "}
+              <span className="font-bold text-[#1A1A2E]">{returnToDelete.id}</span>?
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Btn
+                label="Cancel"
+                outline
+                onClick={() => setDeleteModal(false)}
+              />
+              <Btn label="Delete Challan" color="red" onClick={handleDelete} />
             </div>
           </div>
         </Modal>

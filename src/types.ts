@@ -3,7 +3,8 @@ export type Role =
   | "Director"
   | "AGM"
   | "Project Manager"
-  | "Store Incharge";
+  | "Store Incharge"
+  | "Audit";
 
 export interface InventoryItem {
   sku: string;
@@ -13,7 +14,7 @@ export interface InventoryItem {
   unit: string;
   openingStock: number;
   liveStock: number;
-  condition: "New" | "Good" | "Needs Repair" | "Damaged";
+  condition: "New" | "Good" | "Needs Repair" | "Damaged" | "NA";
   sourceSite?: string;
   lastProject?: string;
   lastAdjustmentReason?: string;
@@ -125,10 +126,19 @@ export interface Inward {
   name: string;
   qty: number;
   unit: string;
-  date: string;
+  receivingDate: string;
   challanNo: string;
   mrNo: string;
   supplier: string;
+  inType:
+    | "Challan"
+    | "Bilty"
+    | "Invoice"
+    | "Without Challan"
+    | "Gate Pass"
+    | "Without Gate Pass";
+  sentToOffice: string;
+  currentStock: number;
   type: "GRN" | "Manual";
   grnRef?: string;
 }
@@ -151,8 +161,8 @@ export interface ReturnItem {
   qty: number;
   unit: string;
   date: string;
-  type: "From Site" | "To Supplier";
-  condition: "New" | "Good" | "Needs Repair" | "Damaged";
+  type: "Outward Return (From Site)" | "Inward Return (To Supplier)";
+  condition: "New" | "Good" | "Needs Repair" | "Damaged" | "NA";
   sourceSite?: string;
   remarks?: string;
   handoverFrom?: string;
@@ -168,4 +178,27 @@ export interface WriteOff {
   requestedBy: string;
   date: string;
   status: "Pending" | "Approved" | "Rejected";
+}
+
+export interface StockCheckRecord {
+  id: string;
+  date: string;
+  checkedBy: string;
+  category: string;
+  items: {
+    sku: string;
+    name: string;
+    systemQty: number;
+    physicalQty: number;
+    variance: number;
+    remark?: string;
+  }[];
+}
+
+export interface ImportLog {
+  importId: string;
+  fileName: string;
+  importedBy: string;
+  totalItems: number;
+  importDate: string;
 }

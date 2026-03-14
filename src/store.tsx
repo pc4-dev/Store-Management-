@@ -13,6 +13,8 @@ import {
   Outward,
   ReturnItem,
   WriteOff,
+  StockCheckRecord,
+  ImportLog,
   Role,
 } from "./types";
 
@@ -43,6 +45,10 @@ interface AppState {
   setReturns: (value: React.SetStateAction<ReturnItem[]>) => void;
   writeOffs: WriteOff[];
   setWriteOffs: (value: React.SetStateAction<WriteOff[]>) => void;
+  stockCheckRecords: StockCheckRecord[];
+  setStockCheckRecords: (value: React.SetStateAction<StockCheckRecord[]>) => void;
+  importLogs: ImportLog[];
+  setImportLogs: (value: React.SetStateAction<ImportLog[]>) => void;
   settings: {
     poThreshold: number;
     minQuotesLow: number;
@@ -72,6 +78,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [outwards, setOutwardsState] = useState<Outward[]>([]);
   const [returns, setReturnsState] = useState<ReturnItem[]>([]);
   const [writeOffs, setWriteOffsState] = useState<WriteOff[]>([]);
+  const [stockCheckRecords, setStockCheckRecordsState] = useState<StockCheckRecord[]>([]);
+  const [importLogs, setImportLogsState] = useState<ImportLog[]>([]);
   const [settings, setSettingsState] = useState({
     poThreshold: 25000,
     minQuotesLow: 2,
@@ -186,6 +194,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setWriteOffsState(items);
     });
 
+    // Real-time listener for StockCheckRecords from Firestore
+    const unsubStockChecks = onSnapshot(collection(db, "stock_checks"), (snapshot) => {
+      const items = snapshot.docs.map(doc => doc.data() as StockCheckRecord);
+      setStockCheckRecordsState(items);
+    });
+
+    // Real-time listener for ImportLogs from Firestore
+    const unsubImportLogs = onSnapshot(collection(db, "import_logs"), (snapshot) => {
+      const items = snapshot.docs.map(doc => doc.data() as ImportLog);
+      setImportLogsState(items);
+    });
+
     // Real-time listener for Settings from Firestore
     const unsubSettings = onSnapshot(doc(db, "settings", "global"), (snapshot) => {
       if (snapshot.exists()) {
@@ -204,6 +224,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       unsubOutwards();
       unsubReturns();
       unsubWriteOffs();
+      unsubStockChecks();
+      unsubImportLogs();
       unsubSettings();
       unsubAuth();
     };
@@ -226,11 +248,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           // Sync new or changed items
           next.forEach(async (item) => {
             const id = String(item[idField]);
+            // Replace slashes with underscores for Firestore document ID to prevent subcollection creation
+            const safeDocId = id.replace(/\//g, "_");
             const prevItem = prevMap.get(id);
             if (!prevItem || JSON.stringify(prevItem) !== JSON.stringify(item)) {
               try {
-                await setDoc(doc(db, collectionName, id), item as any);
-                console.log(`Synced ${id} to ${collectionName}`);
+                await setDoc(doc(db, collectionName, safeDocId), item as any);
+                console.log(`Synced ${id} to ${collectionName} as ${safeDocId}`);
               } catch (err) {
                 console.error(`Error saving ${id} to ${collectionName}:`, err);
               }
@@ -240,9 +264,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           // Sync deletions
           prevMap.forEach(async (_, id) => {
             if (!nextMap.has(id)) {
+              const safeDocId = id.replace(/\//g, "_");
               try {
-                await deleteDoc(doc(db, collectionName, id));
-                console.log(`Deleted ${id} from ${collectionName}`);
+                await deleteDoc(doc(db, collectionName, safeDocId));
+                console.log(`Deleted ${id} from ${collectionName} as ${safeDocId}`);
               } catch (err) {
                 console.error(`Error deleting ${id} from ${collectionName}:`, err);
               }
@@ -265,6 +290,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const setOutwards = createFirestoreSetter(setOutwardsState, "outwards");
   const setReturns = createFirestoreSetter(setReturnsState, "returns");
   const setWriteOffs = createFirestoreSetter(setWriteOffsState, "writeoffs");
+  const setStockCheckRecords = createFirestoreSetter(setStockCheckRecordsState, "stock_checks");
+  const setImportLogs = createFirestoreSetter(setImportLogsState, "import_logs", "importId");
 
   const setSettings = (value: React.SetStateAction<typeof settings>) => {
     setSettingsState((prev) => {
@@ -333,6 +360,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setReturns,
         writeOffs,
         setWriteOffs,
+        stockCheckRecords,
+        setStockCheckRecords,
+        importLogs,
+        setImportLogs,
         settings,
         setSettings,
       }}

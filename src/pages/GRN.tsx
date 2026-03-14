@@ -81,35 +81,40 @@ export const GRNPage = () => {
 
     // Update inventory and create inward entries
     const newInwards: Inward[] = [];
-    const updatedInventory = [...inventory];
 
-    grn.items.forEach((item) => {
-      const invIdx = updatedInventory.findIndex((i) => i.sku === item.sku);
-      if (invIdx >= 0) {
-        updatedInventory[invIdx] = {
-          ...updatedInventory[invIdx],
-          liveStock: updatedInventory[invIdx].liveStock + item.received,
-        };
-      }
-
-      newInwards.push({
-        id: `INW-${Date.now()}-${item.sku}`,
-        sku: item.sku,
-        name: item.name,
-        qty: item.received,
-        unit: updatedInventory[invIdx]?.unit || "NOS",
-        date: grn.date,
-        challanNo: grn.challan,
-        mrNo: grn.mrNo,
-        supplier: grn.vendor,
-        type: "GRN",
-        grnRef: grn.id,
+    setInventory((prev) => {
+      const updated = [...prev];
+      grn.items.forEach((item) => {
+        const idx = updated.findIndex((i) => i.sku === item.sku);
+        if (idx >= 0) {
+          updated[idx] = {
+            ...updated[idx],
+            liveStock: updated[idx].liveStock + item.received,
+          };
+        }
+        
+        newInwards.push({
+          id: `INW-${Date.now()}-${item.sku}`,
+          sku: item.sku,
+          name: item.name,
+          qty: item.received,
+          unit: updated[idx]?.unit || "NOS",
+          receivingDate: grn.date,
+          challanNo: grn.challan,
+          mrNo: grn.mrNo,
+          supplier: grn.vendor,
+          inType: grn.docType as any,
+          sentToOffice: "",
+          currentStock: updated[idx]?.liveStock || 0,
+          type: "GRN",
+          grnRef: grn.id,
+        });
       });
+      return updated;
     });
 
-    setInventory(updatedInventory);
-    setInwards([...newInwards, ...inwards]);
-    setGrns([grn, ...grns]);
+    setInwards((prev) => [...newInwards, ...prev]);
+    setGrns((prev) => [grn, ...prev]);
     setModal(false);
     setNewGRN({
       poId: "",
@@ -196,7 +201,7 @@ export const GRNPage = () => {
                         outline
                         onClick={() => {
                           if (confirm(`Delete GRN ${grn.id}?`)) {
-                            setGrns(grns.filter(g => g.id !== grn.id));
+                            setGrns((prev) => prev.filter(g => g.id !== grn.id));
                           }
                         }}
                       />

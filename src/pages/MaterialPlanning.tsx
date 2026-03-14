@@ -35,7 +35,7 @@ export const MaterialPlanning = () => {
       status: "Open",
       items: newPlan.items!,
     };
-    setPlans([plan, ...plans]);
+    setPlans((prev) => [plan, ...prev]);
     setModal(false);
     setNewPlan({ project: "", milestone: "", workType: "", items: [] });
   };
@@ -119,7 +119,7 @@ export const MaterialPlanning = () => {
                     outline
                     onClick={() => {
                       if (confirm(`Delete plan ${plan.id}?`)) {
-                        setPlans(plans.filter(p => p.id !== plan.id));
+                        setPlans((prev) => prev.filter(p => p.id !== plan.id));
                       }
                     }}
                   />

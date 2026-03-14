@@ -9,10 +9,10 @@ import {
   SField,
   Field,
 } from "../components/ui";
-import { Tag, Search, AlertTriangle, Plus, Download } from "lucide-react";
+import { Tag, Search, AlertTriangle, Plus, Download, FileJson } from "lucide-react";
 import { InventoryItem } from "../types";
 import { CATEGORIES, UNITS } from "../data";
-import { exportToCSV } from "../utils";
+import { exportToCSV, generateSku } from "../utils";
 
 export const Inventory = () => {
   const { inventory, setInventory, catalogue, role, setWriteOffs, writeOffs } =
@@ -20,6 +20,8 @@ export const Inventory = () => {
   const [search, setSearch] = useState("");
   const [tagModal, setTagModal] = useState<InventoryItem | null>(null);
   const [adjustModal, setAdjustModal] = useState<InventoryItem | null>(null);
+  const [editModal, setEditModal] = useState<InventoryItem | null>(null);
+  const [deleteModal, setDeleteModal] = useState<InventoryItem | null>(null);
   const [addModal, setAddModal] = useState(false);
   const [tagData, setTagData] = useState({
     condition: "New",
@@ -59,24 +61,6 @@ export const Inventory = () => {
         i.sku === tagModal.sku ? ({ ...i, ...tagData } as InventoryItem) : i,
       ),
     );
-
-    if (tagData.condition === "Damaged") {
-      setWriteOffs([
-        ...writeOffs,
-        {
-          id: `WO-2026-${String(writeOffs.length + 1).padStart(3, "0")}`,
-          sku: tagModal.sku,
-          name: tagModal.name,
-          qty: tagModal.liveStock,
-          unit: tagModal.unit,
-          reason: "Auto-created from condition tagging",
-          requestedBy: role || "System",
-          date: new Date().toISOString().split("T")[0],
-          status: "Pending",
-        },
-      ]);
-      alert("Write-off request auto-created for damaged items.");
-    }
 
     setTagModal(null);
   };
@@ -123,11 +107,25 @@ export const Inventory = () => {
     });
   };
 
+  const handleEdit = () => {
+    if (!editModal) return;
+    setInventory((prev) =>
+      prev.map((i) => (i.sku === editModal.sku ? editModal : i)),
+    );
+    setEditModal(null);
+  };
+
+  const handleDelete = () => {
+    if (!deleteModal) return;
+    setInventory((prev) => prev.filter((i) => i.sku !== deleteModal.sku));
+    setDeleteModal(null);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Inventory"
-        sub="Live stock and condition tracking"
+        sub="Live stock and inventory management"
         actions={
           <div className="flex items-center gap-2">
             <Btn
@@ -137,27 +135,33 @@ export const Inventory = () => {
               onClick={() => exportToCSV(inventory, "Inventory")}
             />
             {(role === "Store Incharge" || role === "Super Admin") && (
-              <Btn
-                label="Add Item"
-                icon={Plus}
-                onClick={() => setAddModal(true)}
-              />
+              <>
+                <Btn
+                  label="Smart Import"
+                  icon={FileJson}
+                  outline
+                  onClick={() => (window.location.hash = "inventory-import")}
+                />
+                <Btn
+                  label="Add Item"
+                  icon={Plus}
+                  onClick={() => setAddModal(true)}
+                />
+              </>
             )}
           </div>
         }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {["New", "Good", "Needs Repair", "Damaged"].map((cond) => (
-          <Card key={cond} className="p-4 flex items-center justify-between">
-            <span className="text-[13px] font-bold text-[#6B7280] uppercase">
-              {cond}
-            </span>
-            <span className="text-xl font-extrabold text-[#1A1A2E]">
-              {inventory.filter((i) => i.condition === cond).length}
-            </span>
-          </Card>
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-4 flex items-center justify-between">
+          <span className="text-[13px] font-bold text-[#6B7280] uppercase">
+            Total Stock Items
+          </span>
+          <span className="text-xl font-extrabold text-[#1A1A2E]">
+            {inventory.length}
+          </span>
+        </Card>
       </div>
 
       <Card className="p-0 overflow-hidden">
@@ -190,7 +194,7 @@ export const Inventory = () => {
             <thead>
               <tr className="bg-gray-50 border-b border-[#E8ECF0]">
                 <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
-                  SKU
+                  SKU Code
                 </th>
                 <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
                   Item Name
@@ -201,12 +205,11 @@ export const Inventory = () => {
                 <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider text-right">
                   Live Stock
                 </th>
-                <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
-                  Condition
-                </th>
-                <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
-                  Action
-                </th>
+                {(role === "Store Incharge" || role === "Super Admin") && (
+                  <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
+                    Action
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8ECF0]">
@@ -246,11 +249,8 @@ export const Inventory = () => {
                         {item.liveStock} {item.unit}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={item.condition} />
-                    </td>
-                    <td className="px-4 py-3">
-                      {(role === "Store Incharge" || role === "Super Admin") && (
+                    {(role === "Store Incharge" || role === "Super Admin") && (
+                      <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Btn
                             label="Tag"
@@ -282,21 +282,25 @@ export const Inventory = () => {
                             }}
                           />
                           {role === "Super Admin" && (
-                            <Btn
-                              label="Delete"
-                              color="red"
-                              small
-                              outline
-                              onClick={() => {
-                                if (confirm(`Are you sure you want to delete ${item.name}?`)) {
-                                  setInventory(inventory.filter(i => i.sku !== item.sku));
-                                }
-                              }}
-                            />
+                            <>
+                              <Btn
+                                label="Edit"
+                                small
+                                outline
+                                onClick={() => setEditModal(item)}
+                              />
+                              <Btn
+                                label="Delete"
+                                color="red"
+                                small
+                                outline
+                                onClick={() => setDeleteModal(item)}
+                              />
+                            </>
                           )}
                         </div>
-                      )}
-                    </td>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -311,21 +315,6 @@ export const Inventory = () => {
           onClose={() => setTagModal(null)}
         >
           <div className="space-y-4">
-            <SField
-              label="Condition"
-              value={tagData.condition}
-              onChange={(e: any) =>
-                setTagData({ ...tagData, condition: e.target.value })
-              }
-              options={["New", "Good", "Needs Repair", "Damaged"]}
-            />
-            {tagData.condition === "Damaged" && (
-              <div className="p-3 bg-red-50 text-red-700 text-[13px] rounded-lg border border-red-200 flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                Tagging as Damaged will auto-create a write-off request for
-                AGM/Director approval.
-              </div>
-            )}
             <Field
               label="Source Site (Optional)"
               value={tagData.sourceSite}
@@ -403,15 +392,34 @@ export const Inventory = () => {
       {addModal && (
         <Modal title="Add New Inventory Item" onClose={() => setAddModal(false)}>
           <div className="space-y-4">
-            <Field
-              label="SKU Code"
-              value={newItem.sku}
-              onChange={(e: any) =>
-                setNewItem({ ...newItem, sku: e.target.value })
-              }
-              placeholder="e.g. Ele/Mod/0001"
-              required
-            />
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Field
+                  label="SKU Code"
+                  value={newItem.sku}
+                  onChange={(e: any) =>
+                    setNewItem({ ...newItem, sku: e.target.value })
+                  }
+                  placeholder="e.g. Ele/Mod/0001"
+                  required
+                />
+              </div>
+              <Btn
+                label="Auto"
+                outline
+                small
+                onClick={() => {
+                  const sku = generateSku(
+                    newItem.category,
+                    newItem.subCategory,
+                    inventory.length,
+                  );
+                  setNewItem({ ...newItem, sku });
+                }}
+                disabled={!newItem.category || !newItem.subCategory}
+                title="Generate SKU based on Category and Sub-Category"
+              />
+            </div>
             <Field
               label="Item Name"
               value={newItem.name}
@@ -461,18 +469,112 @@ export const Inventory = () => {
                 required
               />
             </div>
-            <SField
-              label="Condition"
-              value={newItem.condition}
-              onChange={(e: any) =>
-                setNewItem({ ...newItem, condition: e.target.value as any })
-              }
-              options={["New", "Good", "Needs Repair", "Damaged"]}
-              required
-            />
             <div className="flex justify-end gap-2 mt-6">
               <Btn label="Cancel" outline onClick={() => setAddModal(false)} />
               <Btn label="Add Item" onClick={handleAdd} />
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {editModal && (
+        <Modal
+          title={`Edit Item: ${editModal.name}`}
+          onClose={() => setEditModal(null)}
+        >
+          <div className="space-y-4">
+            <Field
+              label="Item Name"
+              value={editModal.name}
+              onChange={(e: any) =>
+                setEditModal({ ...editModal, name: e.target.value })
+              }
+              required
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <SField
+                label="Category"
+                value={editModal.category}
+                onChange={(e: any) =>
+                  setEditModal({ ...editModal, category: e.target.value })
+                }
+                options={CATEGORIES}
+                required
+              />
+              <Field
+                label="Sub-Category"
+                value={editModal.subCategory}
+                onChange={(e: any) =>
+                  setEditModal({ ...editModal, subCategory: e.target.value })
+                }
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <SField
+                label="Unit"
+                value={editModal.unit}
+                onChange={(e: any) =>
+                  setEditModal({ ...editModal, unit: e.target.value })
+                }
+                options={UNITS}
+                required
+              />
+              <Field
+                label="Opening Stock"
+                type="number"
+                value={editModal.openingStock}
+                onChange={(e: any) =>
+                  setEditModal({
+                    ...editModal,
+                    openingStock: Number(e.target.value),
+                  })
+                }
+                required
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <Field
+                label="Live Stock"
+                type="number"
+                value={editModal.liveStock}
+                onChange={(e: any) =>
+                  setEditModal({
+                    ...editModal,
+                    liveStock: Number(e.target.value),
+                  })
+                }
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <Btn label="Cancel" outline onClick={() => setEditModal(null)} />
+              <Btn label="Update Item" onClick={handleEdit} />
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deleteModal && (
+        <Modal
+          title="Confirm Delete"
+          onClose={() => setDeleteModal(null)}
+        >
+          <div className="p-4">
+            <p className="text-[14px] text-gray-600 mb-6">
+              Are you sure you want to delete{" "}
+              <span className="font-bold text-[#1A1A2E]">
+                {deleteModal.name}
+              </span>{" "}
+              ({deleteModal.sku})? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Btn
+                label="Cancel"
+                outline
+                onClick={() => setDeleteModal(null)}
+              />
+              <Btn label="Delete Item" color="red" onClick={handleDelete} />
             </div>
           </div>
         </Modal>
