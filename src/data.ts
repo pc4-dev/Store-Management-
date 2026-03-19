@@ -395,3 +395,5 @@ export const UNITS = [
   "RIM",
   "Katte",
 ];
+
+export const CONDITIONS = ["New", "Good", "Needs Repair", "Damaged", "NA"];

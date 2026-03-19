@@ -20,8 +20,17 @@ export const OutwardPage = () => {
     unit: "",
     location: "",
     handoverTo: "",
+    currentStock: 0,
   });
   const [searchItem, setSearchItem] = useState("");
+  const [filterSearch, setFilterSearch] = useState("");
+
+  const filteredOutwards = outwards.filter((out) =>
+    out.name?.toLowerCase().includes(filterSearch.toLowerCase()) ||
+    out.sku?.toLowerCase().includes(filterSearch.toLowerCase())
+  );
+
+  const totalQty = filteredOutwards.reduce((sum, out) => sum + out.qty, 0);
 
   const handleCreate = () => {
     console.log("Attempting to create Outward:", newOutward);
@@ -47,6 +56,7 @@ export const OutwardPage = () => {
       date: todayStr(),
       location: newOutward.location!,
       handoverTo: newOutward.handoverTo!,
+      currentStock: newOutward.currentStock || 0,
     };
 
     setInventory((prev) => {
@@ -96,6 +106,7 @@ export const OutwardPage = () => {
         sku: item.sku,
         name: item.name,
         unit: item.unit,
+        currentStock: item.liveStock,
       });
     } else {
       setNewOutward({
@@ -103,6 +114,7 @@ export const OutwardPage = () => {
         sku: item.sku,
         name: item.name,
         unit: item.unit,
+        currentStock: item.liveStock,
       });
     }
     setSearchItem("");
@@ -140,6 +152,33 @@ export const OutwardPage = () => {
         }
       />
 
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-4 flex flex-col justify-center">
+          <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1">
+            Total Outward Qty
+          </p>
+          <p className="text-2xl font-bold text-[#EF4444]">{totalQty.toLocaleString()}</p>
+        </Card>
+        <Card className="p-4 flex flex-col justify-center">
+          <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1">
+            Total Transactions
+          </p>
+          <p className="text-2xl font-bold text-[#3B82F6]">{filteredOutwards.length}</p>
+        </Card>
+        <Card className="p-4 md:col-span-2 flex items-center">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Filter by SKU or Item Name..."
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 border border-[#E8ECF0] rounded-lg text-[13px] focus:outline-none focus:border-[#F97316]"
+            />
+          </div>
+        </Card>
+      </div>
+
       <Card className="p-0 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -153,6 +192,9 @@ export const OutwardPage = () => {
                 </th>
                 <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
                   Item
+                </th>
+                <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider text-right">
+                  Current Stock
                 </th>
                 <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider text-right">
                   Qty
@@ -169,7 +211,7 @@ export const OutwardPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8ECF0]">
-              {outwards.map((out) => (
+              {filteredOutwards.map((out) => (
                 <tr key={out.id} className="hover:bg-gray-50/50">
                   <td className="px-4 py-3 text-[13px] font-medium text-[#1A1A2E]">
                     {out.id}
@@ -182,6 +224,9 @@ export const OutwardPage = () => {
                     <span className="text-[11px] text-[#6B7280] block font-mono">
                       {out.sku}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-[13px] font-medium text-right text-[#6B7280]">
+                    {out.currentStock || 0} {out.unit}
                   </td>
                   <td className="px-4 py-3 text-[13px] font-bold text-right text-[#EF4444]">
                     - {out.qty} {out.unit}
@@ -256,9 +301,8 @@ export const OutwardPage = () => {
                   {inventory
                     .filter(
                       (i) =>
-                        i.name
-                          ?.toLowerCase()
-                          .includes(searchItem.toLowerCase()) &&
+                        (i.name?.toLowerCase().includes(searchItem.toLowerCase()) ||
+                         i.sku?.toLowerCase().includes(searchItem.toLowerCase())) &&
                         i.liveStock > 0,
                     )
                     .map((i) => (
@@ -298,6 +342,12 @@ export const OutwardPage = () => {
             )}
 
             <div className="grid grid-cols-2 gap-4">
+              <Field
+                label="Current Stock"
+                type="number"
+                value={newOutward.currentStock}
+                disabled
+              />
               <Field
                 label="Quantity to Issue"
                 type="number"
@@ -373,9 +423,8 @@ export const OutwardPage = () => {
                   {inventory
                     .filter(
                       (i) =>
-                        i.name
-                          ?.toLowerCase()
-                          .includes(searchItem.toLowerCase()) &&
+                        (i.name?.toLowerCase().includes(searchItem.toLowerCase()) ||
+                         i.sku?.toLowerCase().includes(searchItem.toLowerCase())) &&
                         i.liveStock > 0,
                     )
                     .map((i) => (
@@ -413,6 +462,12 @@ export const OutwardPage = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+              <Field
+                label="Current Stock"
+                type="number"
+                value={editingOutward.currentStock}
+                disabled
+              />
               <Field
                 label="Quantity to Issue"
                 type="number"

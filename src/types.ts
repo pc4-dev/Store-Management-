@@ -152,6 +152,7 @@ export interface Outward {
   date: string;
   location: string;
   handoverTo: string;
+  currentStock?: number;
 }
 
 export interface ReturnItem {
@@ -188,6 +189,7 @@ export interface StockCheckRecord {
   items: {
     sku: string;
     name: string;
+    unit: string;
     systemQty: number;
     physicalQty: number;
     variance: number;

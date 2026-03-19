@@ -69,6 +69,12 @@ export const InwardImport = () => {
         contents: `Extract inward material transactions from the following text extracted from a PDF. 
         The table structure might include: Item Name, SKU/Code, Quantity, Unit, Supplier/Vendor, Challan/Invoice No, MR No, Receiving Date, In Type, Current Stock/Balance.
         
+        CRITICAL: 
+        - "challanNo" and "mrNo" are DIFFERENT fields. 
+        - If a value looks like a Challan/Bilty/Invoice number, put it in "challanNo".
+        - If a value looks like a Material Receipt (MR) number, put it in "mrNo".
+        - DO NOT put both in the same field. If they are written together in the PDF (e.g. "CH-123 / MR-456"), split them.
+        
         For any string field (SKU, Name, Unit, Supplier, Challan No, MR No, In Type, Sent Office) if the data is not available in the PDF, use "NA".
         For "In Type", choose one of: "Challan", "Bilty", "Invoice", "Without Challan", "Gate Pass", "Without Gate Pass" or "NA".
         For "Receiving Date", extract the date of receiving or document date (YYYY-MM-DD). If not found, use the current date.
@@ -96,17 +102,17 @@ export const InwardImport = () => {
             items: {
               type: Type.OBJECT,
               properties: {
-                sku: { type: Type.STRING },
-                name: { type: Type.STRING },
-                qty: { type: Type.NUMBER },
-                unit: { type: Type.STRING },
-                supplier: { type: Type.STRING },
-                challanNo: { type: Type.STRING },
-                mrNo: { type: Type.STRING },
-                receivingDate: { type: Type.STRING },
-                inType: { type: Type.STRING },
-                sentToOffice: { type: Type.STRING },
-                currentStock: { type: Type.NUMBER },
+                sku: { type: Type.STRING, description: "Stock Keeping Unit or Item Code" },
+                name: { type: Type.STRING, description: "Full name of the item" },
+                qty: { type: Type.NUMBER, description: "Quantity received" },
+                unit: { type: Type.STRING, description: "Unit of measurement (e.g. NOS, KG, MTR)" },
+                supplier: { type: Type.STRING, description: "Name of the vendor or supplier" },
+                challanNo: { type: Type.STRING, description: "Challan, Bilty, or Invoice Number ONLY" },
+                mrNo: { type: Type.STRING, description: "Material Receipt (MR) Number ONLY" },
+                receivingDate: { type: Type.STRING, description: "Date in YYYY-MM-DD format" },
+                inType: { type: Type.STRING, description: "Type of inward document" },
+                sentToOffice: { type: Type.STRING, description: "Office or department where sent" },
+                currentStock: { type: Type.NUMBER, description: "Current stock balance if mentioned" },
               },
               required: ["sku", "name", "qty", "supplier", "challanNo", "mrNo", "receivingDate", "inType"],
             },
@@ -118,10 +124,21 @@ export const InwardImport = () => {
       
       // Validate items
       const validatedItems = items.map((item: any) => {
-        return {
+        const validated = {
           ...item,
+          sku: item.sku || "NA",
+          name: item.name || "NA",
+          unit: item.unit || "NA",
+          supplier: item.supplier || "NA",
+          challanNo: item.challanNo || "NA",
+          mrNo: item.mrNo || "NA",
+          inType: item.inType || "NA",
+          sentToOffice: item.sentToOffice || "NA",
           currentStock: item.currentStock || 0,
-          error: (!item.sku || !item.name || isNaN(item.qty) || !item.supplier || !item.challanNo || !item.mrNo || !item.receivingDate || !item.inType) ? "Missing required fields" : undefined
+        };
+        return {
+          ...validated,
+          error: (!validated.sku || !validated.name || isNaN(validated.qty) || !validated.supplier || !validated.challanNo || !validated.mrNo || !validated.receivingDate || !validated.inType) ? "Missing required fields" : undefined
         };
       });
 
@@ -308,7 +325,8 @@ export const InwardImport = () => {
                     <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider text-right">Qty</th>
                     <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider text-right">Stock</th>
                     <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Supplier</th>
-                    <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Challan/MR</th>
+                    <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Challan/Bilty No.</th>
+                    <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">MR No.</th>
                     <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Date</th>
                     <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">In Type</th>
                     <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Sent Office</th>
@@ -369,22 +387,22 @@ export const InwardImport = () => {
                         </select>
                       </td>
                       <td className="px-2 py-2">
-                        <div className="space-y-1">
-                          <input
-                            type="text"
-                            value={item.challanNo}
-                            onChange={(e) => handleEditItem(idx, "challanNo", e.target.value)}
-                            placeholder="Challan"
-                            className={`w-full px-2 py-1 border rounded text-[13px] ${item.error && !item.challanNo ? "border-red-500" : "border-gray-200"}`}
-                          />
-                          <input
-                            type="text"
-                            value={item.mrNo}
-                            onChange={(e) => handleEditItem(idx, "mrNo", e.target.value)}
-                            placeholder="MR No"
-                            className={`w-full px-2 py-1 border rounded text-[13px] ${item.error && !item.mrNo ? "border-red-500" : "border-gray-200"}`}
-                          />
-                        </div>
+                        <input
+                          type="text"
+                          value={item.challanNo}
+                          onChange={(e) => handleEditItem(idx, "challanNo", e.target.value)}
+                          placeholder="Challan"
+                          className={`w-full px-2 py-1 border rounded text-[13px] ${item.error && !item.challanNo ? "border-red-500" : "border-gray-200"}`}
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          type="text"
+                          value={item.mrNo}
+                          onChange={(e) => handleEditItem(idx, "mrNo", e.target.value)}
+                          placeholder="MR No"
+                          className={`w-full px-2 py-1 border rounded text-[13px] ${item.error && !item.mrNo ? "border-red-500" : "border-gray-200"}`}
+                        />
                       </td>
                       <td className="px-2 py-2">
                         <input

@@ -172,6 +172,7 @@ export const Dashboard = () => {
         {role === "Audit" && (
           <>
             <QuickAction icon={Package} label="View Inventory" href="#inventory" color="blue" />
+            <QuickAction icon={Archive} label="View Catalogue" href="#catalogue" color="blue" />
             <QuickAction icon={CheckSquare} label="Stock Check" href="#stockcheck" color="blue" />
             <QuickAction icon={FileText} label="Stock Reports" href="#stockcheck-reports" color="blue" />
             <QuickAction icon={Archive} label="View Archive" href="#archive" color="blue" />
@@ -339,6 +340,30 @@ export const Dashboard = () => {
               ))}
             </div>
           </Card>
+
+          {role === "Audit" && (
+            <Card className="p-0 overflow-hidden">
+              <div className="p-4 border-b border-[#E8ECF0] bg-gray-50/50">
+                <h3 className="text-[14px] font-bold text-[#1A1A2E]">
+                  Catalogue Status
+                </h3>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="flex justify-between text-[12px]">
+                  <span className="text-[#6B7280]">Approved</span>
+                  <span className="font-bold text-[#1A1A2E]">
+                    {catalogue.filter(c => c.status === "Approved").length}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[12px]">
+                  <span className="text-[#6B7280]">Draft</span>
+                  <span className="font-bold text-[#1A1A2E]">
+                    {catalogue.filter(c => c.status === "Draft").length}
+                  </span>
+                </div>
+              </div>
+            </Card>
+          )}
 
           <Card className="p-0 overflow-hidden">
             <div className="p-4 border-b border-[#E8ECF0] bg-gray-50/50">

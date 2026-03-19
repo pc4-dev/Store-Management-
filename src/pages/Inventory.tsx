@@ -8,10 +8,23 @@ import {
   Modal,
   SField,
   Field,
+  KPICard,
 } from "../components/ui";
-import { Tag, Search, AlertTriangle, Plus, Download, FileJson } from "lucide-react";
+import {
+  Tag,
+  Search,
+  AlertTriangle,
+  Plus,
+  Download,
+  FileJson,
+  Package,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  HelpCircle,
+} from "lucide-react";
 import { InventoryItem } from "../types";
-import { CATEGORIES, UNITS } from "../data";
+import { CATEGORIES, UNITS, CONDITIONS } from "../data";
 import { exportToCSV, generateSku } from "../utils";
 
 export const Inventory = () => {
@@ -121,6 +134,15 @@ export const Inventory = () => {
     setDeleteModal(null);
   };
 
+  const counts = {
+    total: inventory.length,
+    new: inventory.filter((i) => i.condition === "New").length,
+    good: inventory.filter((i) => i.condition === "Good").length,
+    needsRepair: inventory.filter((i) => i.condition === "Needs Repair").length,
+    damaged: inventory.filter((i) => i.condition === "Damaged").length,
+    na: inventory.filter((i) => !i.condition || i.condition === "NA").length,
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -153,15 +175,43 @@ export const Inventory = () => {
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4 flex items-center justify-between">
-          <span className="text-[13px] font-bold text-[#6B7280] uppercase">
-            Total Stock Items
-          </span>
-          <span className="text-xl font-extrabold text-[#1A1A2E]">
-            {inventory.length}
-          </span>
-        </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <KPICard
+          label="Total Items"
+          value={counts.total}
+          icon={Package}
+          color="blue"
+        />
+        <KPICard
+          label="New"
+          value={counts.new}
+          icon={CheckCircle}
+          color="green"
+        />
+        <KPICard
+          label="Good"
+          value={counts.good}
+          icon={CheckCircle}
+          color="blue"
+        />
+        <KPICard
+          label="Needs Repair"
+          value={counts.needsRepair}
+          icon={AlertCircle}
+          color="orange"
+        />
+        <KPICard
+          label="Damaged"
+          value={counts.damaged}
+          icon={XCircle}
+          color="red"
+        />
+        <KPICard
+          label="NA / Unknown"
+          value={counts.na}
+          icon={HelpCircle}
+          color="purple"
+        />
       </div>
 
       <Card className="p-0 overflow-hidden">
@@ -194,6 +244,9 @@ export const Inventory = () => {
             <thead>
               <tr className="bg-gray-50 border-b border-[#E8ECF0]">
                 <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
+                  S.No
+                </th>
+                <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
                   SKU Code
                 </th>
                 <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
@@ -202,8 +255,17 @@ export const Inventory = () => {
                 <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
                   Category
                 </th>
+                <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
+                  Sub-Category
+                </th>
                 <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider text-right">
                   Live Stock
+                </th>
+                <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
+                  Unit
+                </th>
+                <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
+                  Condition
                 </th>
                 {(role === "Store Incharge" || role === "Super Admin") && (
                   <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
@@ -213,18 +275,21 @@ export const Inventory = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8ECF0]">
-              {filtered.map((item) => {
+              {filtered.map((item, idx) => {
                 const cat = catalogue.find((c) => c.sku === item.sku);
                 const isLow = cat && item.liveStock <= cat.minStock;
 
                 return (
                   <tr key={item.sku} className="hover:bg-gray-50/50">
+                    <td className="px-4 py-3 text-[13px] text-[#6B7280]">
+                      {idx + 1}
+                    </td>
                     <td className="px-4 py-3 text-[13px] font-mono text-[#6B7280]">
-                      {item.sku}
+                      {item.sku || "NA"}
                     </td>
                     <td className="px-4 py-3 text-[13px] font-medium text-[#1A1A2E]">
                       <div className="flex items-center gap-2">
-                        {item.name}
+                        {item.name || "NA"}
                         {isLow && (
                           <AlertTriangle
                             className="w-4 h-4 text-[#F97316]"
@@ -234,7 +299,10 @@ export const Inventory = () => {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-[13px] text-[#6B7280]">
-                      {item.category} / {item.subCategory}
+                      {item.category || "NA"}
+                    </td>
+                    <td className="px-4 py-3 text-[13px] text-[#6B7280]">
+                      {item.subCategory || "NA"}
                     </td>
                     <td className="px-4 py-3 text-[13px] font-bold text-right">
                       <span
@@ -246,8 +314,14 @@ export const Inventory = () => {
                               : "text-[#10B981]"
                         }
                       >
-                        {item.liveStock} {item.unit}
+                        {item.liveStock}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-[13px] text-[#6B7280]">
+                      {item.unit || "NA"}
+                    </td>
+                    <td className="px-4 py-3 text-[13px]">
+                      <StatusBadge status={item.condition || "NA"} />
                     </td>
                     {(role === "Store Incharge" || role === "Super Admin") && (
                       <td className="px-4 py-3">
@@ -469,6 +543,15 @@ export const Inventory = () => {
                 required
               />
             </div>
+            <SField
+              label="Condition"
+              value={newItem.condition}
+              onChange={(e: any) =>
+                setNewItem({ ...newItem, condition: e.target.value })
+              }
+              options={CONDITIONS}
+              required
+            />
             <div className="flex justify-end gap-2 mt-6">
               <Btn label="Cancel" outline onClick={() => setAddModal(false)} />
               <Btn label="Add Item" onClick={handleAdd} />
@@ -547,6 +630,15 @@ export const Inventory = () => {
                 required
               />
             </div>
+            <SField
+              label="Condition"
+              value={editModal.condition}
+              onChange={(e: any) =>
+                setEditModal({ ...editModal, condition: e.target.value })
+              }
+              options={CONDITIONS}
+              required
+            />
             <div className="flex justify-end gap-2 mt-6">
               <Btn label="Cancel" outline onClick={() => setEditModal(null)} />
               <Btn label="Update Item" onClick={handleEdit} />

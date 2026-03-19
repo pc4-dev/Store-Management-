@@ -9,22 +9,31 @@ import { StockCheckRecord } from "../types";
 export const StockCheck = () => {
   const { inventory, setInventory, role, setStockCheckRecords, user } = useAppStore();
   const [category, setCategory] = useState("");
+  const [search, setSearch] = useState("");
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [remarks, setRemarks] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const filtered = category
-    ? inventory.filter((i) => i.category === category)
-    : [];
+  const filtered = inventory.filter((i) => {
+    const matchesCategory = category ? i.category === category : true;
+    const matchesSearch = search
+      ? i.name.toLowerCase().includes(search.toLowerCase()) ||
+        i.sku.toLowerCase().includes(search.toLowerCase())
+      : true;
+    return matchesCategory && matchesSearch;
+  });
+
+  const displayList = category || search ? filtered : [];
 
   const handleSubmitAudit = () => {
-    if (!category) return;
+    if (displayList.length === 0) return;
     
-    const auditItems = filtered.map(item => {
+    const auditItems = displayList.map(item => {
       const physicalQty = counts[item.sku] !== undefined ? Number(counts[item.sku]) : item.liveStock;
       return {
         sku: item.sku,
         name: item.name,
+        unit: item.unit,
         systemQty: item.liveStock,
         physicalQty,
         variance: physicalQty - item.liveStock,
@@ -36,7 +45,7 @@ export const StockCheck = () => {
       id: genId("SC", Date.now()),
       date: todayStr(),
       checkedBy: user?.name || "Unknown",
-      category,
+      category: category || "Search Results",
       items: auditItems
     };
 
@@ -60,7 +69,7 @@ export const StockCheck = () => {
               outline
               onClick={() => exportToCSV(inventory, "StockAudit")}
             />
-            {category && (
+            {displayList.length > 0 && (
               <Btn
                 label="Submit Audit"
                 icon={Save}
@@ -72,17 +81,29 @@ export const StockCheck = () => {
       />
 
       <Card className="p-4 mb-6">
-        <div className="max-w-md">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <SField
             label="Select Category to Audit"
             value={category}
             onChange={(e: any) => setCategory(e.target.value)}
             options={CATEGORIES}
           />
+          <div>
+            <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1">
+              Search SKU or Item Name
+            </label>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search items..."
+              className="w-full px-3 py-2 border border-[#E8ECF0] rounded-lg text-[13px] focus:outline-none focus:border-[#F97316]"
+            />
+          </div>
         </div>
       </Card>
 
-      {category && (
+      {displayList.length > 0 && (
         <Card className="p-0 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -109,7 +130,7 @@ export const StockCheck = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8ECF0]">
-                {filtered.map((item) => {
+                {displayList.map((item) => {
                   const count =
                     counts[item.sku] !== undefined ? counts[item.sku] : "";
                   const variance =

@@ -27,6 +27,14 @@ export const InwardPage = () => {
     type: "Manual",
   });
   const [searchItem, setSearchItem] = useState("");
+  const [filterSearch, setFilterSearch] = useState("");
+
+  const filteredInwards = inwards.filter((inw) =>
+    inw.name?.toLowerCase().includes(filterSearch.toLowerCase()) ||
+    inw.sku?.toLowerCase().includes(filterSearch.toLowerCase())
+  );
+
+  const totalQty = filteredInwards.reduce((sum, inw) => sum + inw.qty, 0);
 
   const handleCreate = () => {
     console.log("Attempting to create Inward:", newInward);
@@ -149,6 +157,33 @@ export const InwardPage = () => {
         }
       />
 
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-4 flex flex-col justify-center">
+          <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1">
+            Total Inward Qty
+          </p>
+          <p className="text-2xl font-bold text-[#10B981]">{totalQty.toLocaleString()}</p>
+        </Card>
+        <Card className="p-4 flex flex-col justify-center">
+          <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1">
+            Total Transactions
+          </p>
+          <p className="text-2xl font-bold text-[#3B82F6]">{filteredInwards.length}</p>
+        </Card>
+        <Card className="p-4 md:col-span-2 flex items-center">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Filter by SKU or Item Name..."
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 border border-[#E8ECF0] rounded-lg text-[13px] focus:outline-none focus:border-[#F97316]"
+            />
+          </div>
+        </Card>
+      </div>
+
       <Card className="p-0 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -173,7 +208,10 @@ export const InwardPage = () => {
                   Supplier
                 </th>
                 <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
-                  Challan / MR
+                  Challan / Bilty No.
+                </th>
+                <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
+                  MR No.
                 </th>
                 <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
                   In Type
@@ -181,10 +219,15 @@ export const InwardPage = () => {
                 <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
                   Sent to Office
                 </th>
+                {role === "Super Admin" && (
+                  <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider text-right">
+                    Actions
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8ECF0]">
-              {inwards.map((inw) => (
+              {filteredInwards.map((inw) => (
                 <tr key={inw.id} className="hover:bg-gray-50/50">
                   <td className="px-4 py-3 text-[13px] text-[#6B7280]">
                     {inw.receivingDate}
@@ -205,7 +248,10 @@ export const InwardPage = () => {
                     {inw.supplier || "NA"}
                   </td>
                   <td className="px-4 py-3 text-[13px] text-[#6B7280]">
-                    {inw.challanNo || "NA"} / {inw.mrNo || "NA"}
+                    {inw.challanNo || "NA"}
+                  </td>
+                  <td className="px-4 py-3 text-[13px] text-[#6B7280]">
+                    {inw.mrNo || "NA"}
                   </td>
                   <td className="px-4 py-3 text-[13px] text-[#6B7280]">
                     {inw.inType || "NA"}
@@ -241,7 +287,7 @@ export const InwardPage = () => {
               {inwards.length === 0 && (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={11}
                     className="px-4 py-8 text-center text-gray-500 text-[13px]"
                   >
                     No inward transactions yet.
@@ -274,7 +320,8 @@ export const InwardPage = () => {
                 <div className="absolute z-10 w-full mt-1 bg-white border border-[#E8ECF0] rounded-lg shadow-lg max-h-48 overflow-y-auto">
                   {inventory
                     .filter((i) =>
-                      i.name?.toLowerCase().includes(searchItem.toLowerCase()),
+                      i.name?.toLowerCase().includes(searchItem.toLowerCase()) ||
+                      i.sku?.toLowerCase().includes(searchItem.toLowerCase())
                     )
                     .map((i) => (
                       <div
@@ -412,7 +459,8 @@ export const InwardPage = () => {
                 <div className="absolute z-10 w-full mt-1 bg-white border border-[#E8ECF0] rounded-lg shadow-lg max-h-48 overflow-y-auto">
                   {inventory
                     .filter((i) =>
-                      i.name?.toLowerCase().includes(searchItem.toLowerCase()),
+                      i.name?.toLowerCase().includes(searchItem.toLowerCase()) ||
+                      i.sku?.toLowerCase().includes(searchItem.toLowerCase())
                     )
                     .map((i) => (
                       <div

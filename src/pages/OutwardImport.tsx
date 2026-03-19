@@ -19,6 +19,7 @@ interface ExtractedOutward {
   unit: string;
   location: string;
   handoverTo: string;
+  currentStock: string;
   error?: string;
 }
 
@@ -62,7 +63,7 @@ export const OutwardImport = () => {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: `Extract outward material issue transactions from the following text extracted from a PDF. 
-        The table structure might include: Item Name, SKU/Code, Quantity, Unit, Location/Site, Handover To/Receiver.
+        The table structure might include: Item Name, SKU/Code, Quantity, Unit, Location/Site, Handover To/Receiver, and Current Stock.
         
         Return a JSON array of objects with these fields:
         - sku (string)
@@ -71,6 +72,7 @@ export const OutwardImport = () => {
         - unit (string)
         - location (string)
         - handoverTo (string)
+        - currentStock (string) - Extract exactly as shown in PDF (e.g., "100", "50.5", or "N/A" if not available)
 
         Text:
         ${text}`,
@@ -87,6 +89,7 @@ export const OutwardImport = () => {
                 unit: { type: Type.STRING },
                 location: { type: Type.STRING },
                 handoverTo: { type: Type.STRING },
+                currentStock: { type: Type.STRING },
               },
               required: ["sku", "name", "qty", "location", "handoverTo"],
             },
@@ -96,11 +99,22 @@ export const OutwardImport = () => {
 
       const items = safeJsonParse(response.text, []);
       
-      // Validate items
-      const validatedItems = items.map((item: any) => ({
-        ...item,
-        error: (!item.sku || !item.name || isNaN(item.qty) || !item.location || !item.handoverTo) ? "Missing required fields" : undefined
-      }));
+      // Validate items and keep exact PDF data for currentStock
+      const validatedItems = items.map((item: any) => {
+        const validated = {
+          ...item,
+          sku: item.sku || "NA",
+          name: item.name || "NA",
+          unit: item.unit || "NA",
+          location: item.location || "NA",
+          handoverTo: item.handoverTo || "NA",
+          currentStock: item.currentStock || "NA",
+        };
+        return {
+          ...validated,
+          error: (!validated.sku || !validated.name || isNaN(validated.qty) || !validated.location || !validated.handoverTo) ? "Missing required fields" : undefined
+        };
+      });
 
       setExtractedItems(validatedItems);
       setStep(2);
@@ -137,6 +151,7 @@ export const OutwardImport = () => {
         unit: "NOS",
         location: "",
         handoverTo: "",
+        currentStock: "NA",
         error: "Missing required fields"
       }
     ]);
@@ -176,6 +191,7 @@ export const OutwardImport = () => {
         date: todayStr(),
         location: item.location,
         handoverTo: item.handoverTo,
+        currentStock: isNaN(Number(item.currentStock)) ? 0 : Number(item.currentStock),
       };
 
       newInventory[invIdx] = {
@@ -278,6 +294,7 @@ export const OutwardImport = () => {
                   <tr className="bg-gray-50 border-b border-[#E8ECF0]">
                     <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">SKU</th>
                     <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Item Name</th>
+                    <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider text-right">Current Stock</th>
                     <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider text-right">Qty</th>
                     <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Unit</th>
                     <th className="px-4 py-3 text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">Location</th>
@@ -302,6 +319,14 @@ export const OutwardImport = () => {
                           value={item.name}
                           onChange={(e) => handleEditItem(idx, "name", e.target.value)}
                           className={`w-full px-2 py-1 border rounded text-[13px] ${item.error && !item.name ? "border-red-500" : "border-gray-200"}`}
+                        />
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        <input
+                          type="text"
+                          value={item.currentStock}
+                          onChange={(e) => handleEditItem(idx, "currentStock", e.target.value)}
+                          className="w-20 px-2 py-1 border border-gray-200 rounded text-[13px] text-right"
                         />
                       </td>
                       <td className="px-2 py-2 text-right">

@@ -99,7 +99,7 @@ export const StockCheckReports = () => {
                     </td>
                     <td className="px-4 py-3 text-[13px] text-right font-bold">
                       <span className={variances > 0 ? "text-red-500" : "text-green-500"}>
-                        {variances}
+                        {variances} {variances === 1 ? "Item" : "Items"}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right space-x-2">
@@ -193,11 +193,11 @@ export const StockCheckReports = () => {
                     >
                       <td className="px-3 py-2 text-[12px] font-mono text-[#6B7280]">{item.sku}</td>
                       <td className="px-3 py-2 text-[12px] font-medium text-[#1A1A2E]">{item.name}</td>
-                      <td className="px-3 py-2 text-[12px] text-right">{item.systemQty}</td>
-                      <td className="px-3 py-2 text-[12px] text-right font-bold">{item.physicalQty}</td>
+                      <td className="px-3 py-2 text-[12px] text-right">{item.systemQty} {item.unit}</td>
+                      <td className="px-3 py-2 text-[12px] text-right font-bold">{item.physicalQty} {item.unit}</td>
                       <td className="px-3 py-2 text-[12px] text-right">
                         <span className={`font-bold ${item.variance > 0 ? "text-blue-500" : item.variance < 0 ? "text-red-500" : "text-green-500"}`}>
-                          {item.variance > 0 ? `+${item.variance}` : item.variance}
+                          {item.variance > 0 ? `+${item.variance}` : item.variance} {item.unit}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-[12px] text-[#6B7280] italic">
