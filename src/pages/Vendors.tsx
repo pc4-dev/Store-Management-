@@ -13,8 +13,13 @@ import { Plus, Download } from "lucide-react";
 import { Vendor } from "../types";
 import { exportToCSV } from "../utils";
 
+import { FilterBar } from "../components/FilterBar";
+
 export const Vendors = () => {
   const { vendors, setVendors, role } = useAppStore();
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [modal, setModal] = useState(false);
   const [editModal, setEditModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
@@ -28,6 +33,23 @@ export const Vendors = () => {
     gst: "",
     status: "Active",
   });
+
+  const filtered = vendors.filter((v) => {
+    const matchesSearch =
+      v.name.toLowerCase().includes(search.toLowerCase()) ||
+      v.contact.toLowerCase().includes(search.toLowerCase()) ||
+      v.phone.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = !categoryFilter || v.category === categoryFilter;
+    const matchesStatus = !statusFilter || v.status === statusFilter;
+
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setCategoryFilter("");
+    setStatusFilter("");
+  };
 
   const canEdit = ["Super Admin", "Director", "AGM"].includes(role || "");
 
@@ -94,6 +116,35 @@ export const Vendors = () => {
       />
 
       <Card className="p-0 overflow-hidden">
+        <FilterBar
+          search={search}
+          setSearch={setSearch}
+          searchPlaceholder="Search by Name, Contact, or Phone..."
+          onClear={handleClearFilters}
+          resultsCount={filtered.length}
+          totalCount={vendors.length}
+          filters={[
+            {
+              label: "All Categories",
+              value: categoryFilter,
+              onChange: setCategoryFilter,
+              options: [
+                "Construction",
+                "Electrical",
+                "Plumbing",
+                "Hardware",
+                "Oil",
+                "Miscellaneous",
+              ],
+            },
+            {
+              label: "All Statuses",
+              value: statusFilter,
+              onChange: setStatusFilter,
+              options: ["Active", "Inactive"],
+            },
+          ]}
+        />
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -127,7 +178,7 @@ export const Vendors = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8ECF0]">
-              {vendors.map((v) => (
+              {filtered.map((v) => (
                 <tr key={v.id} className="hover:bg-gray-50/50">
                   <td className="px-4 py-3 text-[13px] font-mono text-[#6B7280]">
                     {v.id}

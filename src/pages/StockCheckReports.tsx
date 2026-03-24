@@ -5,18 +5,39 @@ import { ClipboardList, Download, Eye, Calendar, Edit2, Trash2 } from "lucide-re
 import { exportToCSV } from "../utils";
 import { StockCheckRecord } from "../types";
 
+import { FilterBar } from "../components/FilterBar";
+import { CATEGORIES } from "../data";
+
 export const StockCheckReports = () => {
   const { stockCheckRecords, setStockCheckRecords, role } = useAppStore();
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [selectedRecord, setSelectedRecord] = useState<StockCheckRecord | null>(null);
   const [editingRecord, setEditingRecord] = useState<StockCheckRecord | null>(null);
   const [recordToDelete, setRecordToDelete] = useState<StockCheckRecord | null>(null);
-  const [filterDate, setFilterDate] = useState("");
   const [editModal, setEditModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
 
-  const filteredRecords = filterDate
-    ? stockCheckRecords.filter(r => r.date === filterDate)
-    : stockCheckRecords;
+  const filteredRecords = stockCheckRecords.filter((r) => {
+    const matchesSearch =
+      r.checkedBy.toLowerCase().includes(search.toLowerCase()) ||
+      r.category.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = !categoryFilter || r.category === categoryFilter;
+    const matchesDate =
+      (!startDate || r.date >= startDate) &&
+      (!endDate || r.date <= endDate);
+
+    return matchesSearch && matchesCategory && matchesDate;
+  });
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setCategoryFilter("");
+    setStartDate("");
+    setEndDate("");
+  };
 
   const handleDelete = () => {
     if (!recordToDelete) return;
@@ -39,12 +60,6 @@ export const StockCheckReports = () => {
         sub="View and export historical physical stock audit records"
         actions={
           <div className="flex gap-2">
-            <input
-              type="date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-              className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
             <Btn
               label="Export All"
               icon={Download}
@@ -56,6 +71,28 @@ export const StockCheckReports = () => {
       />
 
       <Card className="p-0 overflow-hidden">
+        <FilterBar
+          search={search}
+          setSearch={setSearch}
+          searchPlaceholder="Search by Category or Checked By..."
+          onClear={handleClearFilters}
+          resultsCount={filteredRecords.length}
+          totalCount={stockCheckRecords.length}
+          dateRange={{
+            startDate,
+            endDate,
+            onStartChange: setStartDate,
+            onEndChange: setEndDate,
+          }}
+          filters={[
+            {
+              label: "All Categories",
+              value: categoryFilter,
+              onChange: setCategoryFilter,
+              options: CATEGORIES,
+            },
+          ]}
+        />
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>

@@ -22,8 +22,15 @@ import { PurchaseOrder, POLineItem } from "../types";
 import { fmtCur, genId, todayStr, exportToCSV } from "../utils";
 import { PROJECTS, WORK_TYPES } from "../data";
 
+import { FilterBar } from "../components/FilterBar";
+
 export const PurchaseOrders = () => {
   const { pos, setPos, role, inventory, vendors, settings } = useAppStore();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [projectFilter, setProjectFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [modal, setModal] = useState(false);
   const [editModal, setEditModal] = useState(false);
   const [viewModal, setViewModal] = useState<PurchaseOrder | null>(null);
@@ -40,6 +47,28 @@ export const PurchaseOrders = () => {
     justification: "",
   });
   const [searchItem, setSearchItem] = useState("");
+
+  const filtered = pos.filter((po) => {
+    const matchesSearch =
+      po.id.toLowerCase().includes(search.toLowerCase()) ||
+      po.vendor.toLowerCase().includes(search.toLowerCase()) ||
+      po.project.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = !statusFilter || po.status === statusFilter;
+    const matchesProject = !projectFilter || po.project === projectFilter;
+    const matchesDate =
+      (!startDate || po.date >= startDate) &&
+      (!endDate || po.date <= endDate);
+
+    return matchesSearch && matchesStatus && matchesProject && matchesDate;
+  });
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setStatusFilter("");
+    setProjectFilter("");
+    setStartDate("");
+    setEndDate("");
+  };
 
   const handleCreate = () => {
     const totalValue =
@@ -213,6 +242,40 @@ export const PurchaseOrders = () => {
         />
 
         <Card className="p-0 overflow-hidden">
+          <FilterBar
+            search={search}
+            setSearch={setSearch}
+            searchPlaceholder="Search by PO No, Vendor, or Project..."
+            onClear={handleClearFilters}
+            resultsCount={filtered.length}
+            totalCount={pos.length}
+            dateRange={{
+              startDate,
+              endDate,
+              onStartChange: setStartDate,
+              onEndChange: setEndDate,
+            }}
+            filters={[
+              {
+                label: "All Projects",
+                value: projectFilter,
+                onChange: setProjectFilter,
+                options: PROJECTS,
+              },
+              {
+                label: "All Statuses",
+                value: statusFilter,
+                onChange: setStatusFilter,
+                options: [
+                  "Pending L1",
+                  "Pending L2",
+                  "Approved",
+                  "Blocked",
+                  "Draft",
+                ],
+              },
+            ]}
+          />
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -241,7 +304,7 @@ export const PurchaseOrders = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8ECF0]">
-                {pos.map((po) => (
+                {filtered.map((po) => (
                   <tr
                     key={po.id}
                     className="hover:bg-gray-50/50 cursor-pointer"

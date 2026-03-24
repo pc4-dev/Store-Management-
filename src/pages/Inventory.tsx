@@ -27,10 +27,14 @@ import { InventoryItem } from "../types";
 import { CATEGORIES, UNITS, CONDITIONS } from "../data";
 import { exportToCSV, generateSku } from "../utils";
 
+import { FilterBar } from "../components/FilterBar";
+
 export const Inventory = () => {
   const { inventory, setInventory, catalogue, role, setWriteOffs, writeOffs } =
     useAppStore();
   const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [conditionFilter, setConditionFilter] = useState("");
   const [tagModal, setTagModal] = useState<InventoryItem | null>(null);
   const [adjustModal, setAdjustModal] = useState<InventoryItem | null>(null);
   const [editModal, setEditModal] = useState<InventoryItem | null>(null);
@@ -60,11 +64,21 @@ export const Inventory = () => {
     condition: "New",
   });
 
-  const filtered = inventory.filter(
-    (i) =>
+  const filtered = inventory.filter((i) => {
+    const matchesSearch =
       i.name?.toLowerCase().includes(search.toLowerCase()) ||
-      i.sku?.toLowerCase().includes(search.toLowerCase()),
-  );
+      i.sku?.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = !categoryFilter || i.category === categoryFilter;
+    const matchesCondition = !conditionFilter || i.condition === conditionFilter;
+
+    return matchesSearch && matchesCategory && matchesCondition;
+  });
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setCategoryFilter("");
+    setConditionFilter("");
+  };
 
   const handleTag = () => {
     if (!tagModal) return;
@@ -215,29 +229,28 @@ export const Inventory = () => {
       </div>
 
       <Card className="p-0 overflow-hidden">
-        <div className="p-4 border-b border-[#E8ECF0] bg-white flex items-center gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by SKU or Item Name..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-10 py-2 border border-[#E8ECF0] rounded-lg text-[13px] focus:outline-none focus:border-[#F97316]"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <Plus className="w-4 h-4 rotate-45" />
-              </button>
-            )}
-          </div>
-          <div className="text-[12px] text-[#6B7280]">
-            Showing {filtered.length} of {inventory.length} items
-          </div>
-        </div>
+        <FilterBar
+          search={search}
+          setSearch={setSearch}
+          searchPlaceholder="Search by SKU or Item Name..."
+          onClear={handleClearFilters}
+          resultsCount={filtered.length}
+          totalCount={inventory.length}
+          filters={[
+            {
+              label: "All Categories",
+              value: categoryFilter,
+              onChange: setCategoryFilter,
+              options: CATEGORIES,
+            },
+            {
+              label: "All Conditions",
+              value: conditionFilter,
+              onChange: setConditionFilter,
+              options: CONDITIONS,
+            },
+          ]}
+        />
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">

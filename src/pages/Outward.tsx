@@ -5,9 +5,15 @@ import { Plus, Printer, Search, AlertTriangle, Download, FileText } from "lucide
 import { Outward } from "../types";
 import { genId, todayStr, exportToCSV } from "../utils";
 
+import { FilterBar } from "../components/FilterBar";
+
 export const OutwardPage = () => {
   const { outwards, setOutwards, inventory, setInventory, role } =
     useAppStore();
+  const [search, setSearch] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [modal, setModal] = useState(false);
   const [editModal, setEditModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
@@ -23,12 +29,27 @@ export const OutwardPage = () => {
     currentStock: 0,
   });
   const [searchItem, setSearchItem] = useState("");
-  const [filterSearch, setFilterSearch] = useState("");
 
-  const filteredOutwards = outwards.filter((out) =>
-    out.name?.toLowerCase().includes(filterSearch.toLowerCase()) ||
-    out.sku?.toLowerCase().includes(filterSearch.toLowerCase())
-  );
+  const filteredOutwards = outwards.filter((out) => {
+    const matchesSearch =
+      out.name?.toLowerCase().includes(search.toLowerCase()) ||
+      out.sku?.toLowerCase().includes(search.toLowerCase()) ||
+      out.handoverTo?.toLowerCase().includes(search.toLowerCase()) ||
+      out.id?.toLowerCase().includes(search.toLowerCase());
+    const matchesLocation = !locationFilter || out.location === locationFilter;
+    const matchesDate =
+      (!startDate || out.date >= startDate) &&
+      (!endDate || out.date <= endDate);
+
+    return matchesSearch && matchesLocation && matchesDate;
+  });
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setLocationFilter("");
+    setStartDate("");
+    setEndDate("");
+  };
 
   const totalQty = filteredOutwards.reduce((sum, out) => sum + out.qty, 0);
 
@@ -152,7 +173,7 @@ export const OutwardPage = () => {
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="p-4 flex flex-col justify-center">
           <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1">
             Total Outward Qty
@@ -165,21 +186,38 @@ export const OutwardPage = () => {
           </p>
           <p className="text-2xl font-bold text-[#3B82F6]">{filteredOutwards.length}</p>
         </Card>
-        <Card className="p-4 md:col-span-2 flex items-center">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Filter by SKU or Item Name..."
-              value={filterSearch}
-              onChange={(e) => setFilterSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-[#E8ECF0] rounded-lg text-[13px] focus:outline-none focus:border-[#F97316]"
-            />
-          </div>
-        </Card>
       </div>
 
       <Card className="p-0 overflow-hidden">
+        <FilterBar
+          search={search}
+          setSearch={setSearch}
+          searchPlaceholder="Search by SKU, Item, MIS No, or Handover..."
+          onClear={handleClearFilters}
+          resultsCount={filteredOutwards.length}
+          totalCount={outwards.length}
+          dateRange={{
+            startDate,
+            endDate,
+            onStartChange: setStartDate,
+            onEndChange: setEndDate,
+          }}
+          filters={[
+            {
+              label: "All Locations",
+              value: locationFilter,
+              onChange: setLocationFilter,
+              options: [
+                "Villa No.",
+                "Club House",
+                "Plant",
+                "G+10",
+                "Main Gate",
+                "Other",
+              ],
+            },
+          ]}
+        />
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
